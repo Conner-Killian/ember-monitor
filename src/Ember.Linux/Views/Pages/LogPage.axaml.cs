@@ -32,15 +32,15 @@ public partial class LogPage : UserControl
     private static string SettingsKey()
     {
         var s = App.Settings;
-        return $"{s.Unit}|{s.LogEnabled}|{s.LogRetentionDays}|{s.LogViewDays}|{s.CpuThresholds.Warn}|{s.CpuThresholds.Critical}|{s.GpuThresholds.Warn}|{s.GpuThresholds.Critical}|{s.RamThresholds.Warn}|{s.SsdThresholds.Warn}|{s.HddThresholds.Warn}";
+        return $"{s.Unit}|{s.LogEnabled}|{s.LogRetentionDays}|{s.LogViewHours}|{s.CpuThresholds.Warn}|{s.CpuThresholds.Critical}|{s.GpuThresholds.Warn}|{s.GpuThresholds.Critical}|{s.RamThresholds.Warn}|{s.SsdThresholds.Warn}|{s.HddThresholds.Warn}";
     }
 
     private void OnSettings() { if (SettingsKey() != _lastSettings) Refresh(); }
 
-    /// <summary>Shows the last <paramref name="days"/> days (remembered).</summary>
-    public void SetRange(int days)
+    /// <summary>Shows the last <paramref name="hours"/> hours (remembered).</summary>
+    public void SetRange(int hours)
     {
-        App.Settings.LogViewDays = days;
+        App.Settings.LogViewHours = hours;
         App.Settings.Save();
         Refresh();
     }
@@ -51,13 +51,13 @@ public partial class LogPage : UserControl
         _lastSettings = SettingsKey();
         int version = ++_version;
 
-        // Chart length: standard steps up to what the log keeps (1 day … 1 year).
-        int days = LogViewModel.ViewDays(s);
+        // Chart length: standard steps up to what the log keeps (1 hour … 1 year).
+        int hours = LogViewModel.ViewHours(s);
         var combo = C<ComboBox>("RangeCombo");
         _syncingRange = true;
         combo.ItemsSource = LogViewModel.ViewOptions(s.LogRetentionDays)
-            .Select(d => new ComboBoxItem { Content = d == 1 ? "24 hours" : LogViewModel.DaysText(d), Tag = d }).ToList();
-        combo.SelectedItem = combo.Items.OfType<ComboBoxItem>().FirstOrDefault(i => i.Tag is int t && t == days);
+            .Select(h => new ComboBoxItem { Content = LogViewModel.RangeText(h), Tag = h }).ToList();
+        combo.SelectedItem = combo.Items.OfType<ComboBoxItem>().FirstOrDefault(i => i.Tag is int t && t == hours);
         _syncingRange = false;
 
         var log = App.Log;
@@ -79,7 +79,7 @@ public partial class LogPage : UserControl
         C<Border>("OffCard").IsVisible = false;
         C<StackPanel>("RangeHost").IsVisible = true;
         LogView view;
-        try { view = await Task.Run(() => LogViewModel.Build(log, days, s, DateTime.UtcNow)); }
+        try { view = await Task.Run(() => LogViewModel.Build(log, hours, s, DateTime.UtcNow)); }
         catch (Exception ex) { App.LogError("Log page: " + ex); C<TextBlock>("StatusText").Text = "Couldn't read the log: " + ex.Message; return; }
         if (version != _version) return;
 
@@ -132,8 +132,8 @@ public partial class LogPage : UserControl
     private bool _syncingRange;
     private void Range_Changed(object? sender, SelectionChangedEventArgs e)
     {
-        if (_syncingRange || C<ComboBox>("RangeCombo").SelectedItem is not ComboBoxItem { Tag: int days } || days == LogViewModel.ViewDays(App.Settings)) return;
-        SetRange(days);
+        if (_syncingRange || C<ComboBox>("RangeCombo").SelectedItem is not ComboBoxItem { Tag: int hours } || hours == LogViewModel.ViewHours(App.Settings)) return;
+        SetRange(hours);
     }
 
     private void TurnOn_Click(object? sender, RoutedEventArgs e)

@@ -430,7 +430,7 @@ public static class LogAnalysis
     public readonly record struct Tick(long Minute, string Label);
 
     /// <summary>
-    /// Time-axis marks spaced for the range shown: every 3 hours for a day, daily for a week,
+    /// Time-axis marks spaced for the range shown: every 10 minutes for an hour up to every 3 hours for a day, daily for a week,
     /// every 2 days for two weeks, weekly (Mondays) up to ~3 months, monthly beyond.
     /// </summary>
     public static List<Tick> Ticks(long fromMinute, long toMinute)
@@ -438,7 +438,7 @@ public static class LogAnalysis
         var ticks = new List<Tick>();
         var start = DateTime.UnixEpoch.AddMinutes(fromMinute).ToLocalTime();
         var end = DateTime.UnixEpoch.AddMinutes(toMinute).ToLocalTime();
-        double days = (toMinute - fromMinute + 1) / 1440.0;
+        double minutes = toMinute - fromMinute + 1, days = minutes / 1440.0;
         var culture = System.Globalization.CultureInfo.CurrentCulture;
         void Add(DateTime local, string format)
         {
@@ -446,7 +446,11 @@ public static class LogAnalysis
                 ticks.Add(new Tick(TemperatureLog.Minute(local.ToUniversalTime()), local.ToString(format, culture)));
         }
         if (days <= 1.01)
-            for (var t = start.Date.AddHours(Math.Ceiling(start.TimeOfDay.TotalHours / 3) * 3); t <= end; t = t.AddHours(3)) Add(t, "t");
+        {
+            // Up to a day: 10 min for an hour, 30 min for 3 h, hourly for 6 h, 2 h for 12 h, 3 h for a day.
+            int step = minutes <= 61 ? 10 : minutes <= 181 ? 30 : minutes <= 361 ? 60 : minutes <= 721 ? 120 : 180;
+            for (var t = start.Date.AddMinutes(Math.Ceiling(start.TimeOfDay.TotalMinutes / step) * step); t <= end; t = t.AddMinutes(step)) Add(t, "t");
+        }
         else if (days <= 10)
             for (var t = start.Date.AddDays(1); t <= end; t = t.AddDays(1)) Add(t, "ddd d");
         else if (days <= 21)

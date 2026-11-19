@@ -181,12 +181,12 @@ public static class SnapshotTool
                 await Task.Delay(400);
                 Render(main, Path.Combine(dir, "main_log_end.png"), true);
                 lp.Scroller.ScrollToHome();
-                int savedView = settings.LogViewDays;
-                foreach (var d in ViewModels.LogViewModel.ViewOptions(settings.LogRetentionDays))
+                int savedView = settings.LogViewHours;
+                foreach (var h in ViewModels.LogViewModel.ViewOptions(settings.LogRetentionDays))
                 {
-                    lp.SetRange(d);
+                    lp.SetRange(h);
                     await Task.Delay(900);
-                    Render(main, Path.Combine(dir, $"main_log_{d}d.png"), true);
+                    Render(main, Path.Combine(dir, h < 24 ? $"main_log_{h}h.png" : $"main_log_{h / 24}d.png"), true);
                 }
                 lp.SetRange(savedView);
             }

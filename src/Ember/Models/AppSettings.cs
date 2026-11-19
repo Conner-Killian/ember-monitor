@@ -92,8 +92,11 @@ public sealed class AppSettings
     public bool LogEnabled { get; set; }
     /// <summary>How many days the log keeps; older data is overwritten, so the file never grows.</summary>
     public int LogRetentionDays { get; set; } = 7;
-    /// <summary>How many days the Log page's charts show (limited to <see cref="LogRetentionDays"/>).</summary>
-    public int LogViewDays { get; set; } = 7;
+    /// <summary>How many hours the Log page's charts show (limited to <see cref="LogRetentionDays"/>).</summary>
+    public int LogViewHours { get; set; } = 7 * 24;
+    /// <summary>1.2.0 stored the chart length in days; read once, converted to hours, then dropped.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? LogViewDays { get; set; }
 
     // ---- Updates ----
     public bool AutoCheckUpdates { get; set; } = true;
@@ -171,7 +174,8 @@ public sealed class AppSettings
         if (!double.IsFinite(MainHeight) || MainHeight < 620) MainHeight = 760;
         AlertSustainSeconds = Math.Clamp(AlertSustainSeconds, 0, 600);
         LogRetentionDays = Math.Clamp(LogRetentionDays, 1, 365);
-        LogViewDays = Math.Clamp(LogViewDays, 1, 365);
+        if (LogViewDays is int oldDays) { LogViewHours = Math.Clamp(oldDays, 1, 365) * 24; LogViewDays = null; }
+        LogViewHours = Math.Clamp(LogViewHours, 1, 365 * 24);
         Hotkey ??= new();
         Drives ??= new();
         CpuThresholds ??= new(80, 90);

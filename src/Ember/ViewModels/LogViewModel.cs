@@ -46,19 +46,25 @@ public sealed class LogView
 /// <summary>Turns the raw log into what the Log page shows (shared by the Windows and Linux apps).</summary>
 public static class LogViewModel
 {
-    private static readonly int[] ViewLengths = { 1, 7, 14, 30, 60, 90, 180, 365 };
+    /// <summary>Chart lengths in hours: 1, 3, 6, 12 hours, then 1 day … 1 year.</summary>
+    private static readonly int[] ViewLengths = { 1, 3, 6, 12, 24, 7 * 24, 14 * 24, 30 * 24, 60 * 24, 90 * 24, 180 * 24, 365 * 24 };
 
-    /// <summary>Chart lengths offered on the Log page: the standard steps up to what the log keeps, plus the full log.</summary>
+    /// <summary>Chart lengths (hours) offered on the Log page: the standard steps up to what the log keeps, plus the full log.</summary>
     public static List<int> ViewOptions(int retentionDays)
     {
-        var list = ViewLengths.Where(d => d <= retentionDays).ToList();
-        if (!list.Contains(retentionDays)) list.Add(retentionDays);
+        int max = retentionDays * 24;
+        var list = ViewLengths.Where(h => h <= max).ToList();
+        if (!list.Contains(max)) list.Add(max);
         return list;
     }
 
-    /// <summary>The saved chart length, limited to what the log keeps.</summary>
-    public static int ViewDays(AppSettings s) =>
-        ViewOptions(s.LogRetentionDays).LastOrDefault(d => d <= Math.Max(1, s.LogViewDays), 1);
+    /// <summary>The saved chart length in hours, limited to what the log keeps.</summary>
+    public static int ViewHours(AppSettings s) =>
+        ViewOptions(s.LogRetentionDays).LastOrDefault(h => h <= Math.Max(1, s.LogViewHours), 1);
+
+    /// <summary>Dropdown / status text for a chart length in hours ("1 hour", "24 hours", "7 days", "1 year").</summary>
+    public static string RangeText(int hours) =>
+        hours == 1 ? "1 hour" : hours <= 24 ? $"{hours} hours" : DaysText(hours / 24);
 
     public static string DaysText(int days) => days switch
     {
@@ -67,9 +73,6 @@ public static class LogViewModel
         365 => "1 year",
         _ => $"{days} days",
     };
-
-    /// <summary>Text for "the last …".</summary>
-    private static string LastText(int days) => days == 1 ? "24 hours" : DaysText(days);
 
     public static string SizeText(long bytes) =>
         bytes < 1024 * 1024 ? $"{bytes / 1024.0:0} KB" : $"{bytes / (1024.0 * 1024):0.#} MB";
@@ -101,10 +104,13 @@ public static class LogViewModel
         return $"{day}, {local.ToString("t", CultureInfo.CurrentCulture)}";
     }
 
-    public static LogView Build(TemperatureLog log, int days, AppSettings s, DateTime utcNow, int bins = 360)
+    /// <summary>Builds the page for the last <paramref name="hours"/> hours.</summary>
+    public static LogView Build(TemperatureLog log, int hours, AppSettings s, DateTime utcNow, int bins = 360)
     {
         long to = TemperatureLog.Minute(utcNow);
-        long from = to - TemperatureLog.RowsForDays(days) + 1;
+        int minutes = Math.Max(1, hours) * 60;
+        long from = to - minutes + 1;
+        bins = Math.Min(bins, minutes); // never narrower than one minute per column
         var data = log.Read(from, to);
         if (data.Count == 0) return new LogView { Status = "No temperatures recorded yet" };
 
@@ -112,12 +118,19 @@ public static class LogViewModel
         var ordered = data.OrderBy(d => d.Series.Kind switch { LogSeriesKind.Cpu => 0, LogSeriesKind.Gpu => 1, LogSeriesKind.Ram => 2, _ => 3 })
                           .ThenBy(d => d.Series.Slot).ToList();
         long first = ordered.Min(d => d.Points[0].Minute);
+        // "Recording since…" only while the log is younger than the range shown: a gap at the start
+        // of the range (Ember closed for a while) with older data before it isn't the start of the log.
+        bool startsLate = first > from + Math.Min(60, minutes / 20);
+        if (startsLate)
+        {
+            long before = Math.Min(24 * 60, log.Capacity - minutes);
+            if (before > 0 && log.Read(from - before, from - 1).Count > 0) startsLate = false;
+        }
         var view = new LogView
         {
-            // "Recording since…" while the log is younger than the range shown.
-            Status = first > from + 60
+            Status = startsLate
                 ? $"Recording since {When(DateTime.UnixEpoch.AddMinutes(first).ToLocalTime())}"
-                : $"Showing the last {LastText(days)}",
+                : $"Showing the last {RangeText(hours)}",
             DayColumns = new[] { "CPU", "GPU", "Memory", "Drives" },
         };
 
@@ -143,6 +156,8 @@ public static class LogViewModel
         }
 
         // Daily summary: CPU, GPU, memory, hottest drive. "avg · peak" per day.
+        // Not for views shorter than a day: a few hours of "today" isn't a daily figure.
+        if (hours < 24) return view;
         LogSeriesData? Of(LogSeriesKind k) => ordered.FirstOrDefault(d => d.Series.Kind == k);
         var dailyBy = new List<(Dictionary<DateTime, LogAnalysis.Day> days, Thresholds lim)>();
         foreach (var k in new[] { LogSeriesKind.Cpu, LogSeriesKind.Gpu, LogSeriesKind.Ram })

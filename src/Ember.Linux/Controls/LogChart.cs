@@ -147,7 +147,9 @@ public sealed class LogChart : Control
         long m0 = FromMinute + (long)(hb * (double)span / bins.Count), m1 = FromMinute + (long)((hb + 1) * (double)span / bins.Count) - 1;
         var a = DateTime.UnixEpoch.AddMinutes(m0).ToLocalTime();
         var z = DateTime.UnixEpoch.AddMinutes(m1).ToLocalTime();
-        string when = a.Date == z.Date
+        string when = m1 <= m0
+            ? $"{a.ToString("ddd d MMM", CultureInfo.CurrentCulture)}, {a.ToString("t", CultureInfo.CurrentCulture)}" // one-minute column
+            : a.Date == z.Date
             ? $"{a.ToString("ddd d MMM", CultureInfo.CurrentCulture)}, {a.ToString("t", CultureInfo.CurrentCulture)}–{z.ToString("t", CultureInfo.CurrentCulture)}"
             : $"{a.ToString("g", CultureInfo.CurrentCulture)} – {z.ToString("g", CultureInfo.CurrentCulture)}";
         string val = double.IsNaN(bin.Avg) ? "Not recorded" : $"avg {Temps.Number(bin.Avg)}°   peak {Temps.Number(bin.Max)}°   low {Temps.Number(bin.Min)}°";

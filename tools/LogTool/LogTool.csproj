@@ -11,5 +11,6 @@
     <Compile Include="..\..\src\Ember\Services\TemperatureLog.cs" Link="TemperatureLog.cs" />
     <Compile Include="..\..\src\Ember\Services\SensorModels.cs" Link="SensorModels.cs" />
     <Compile Include="..\..\src\Ember\Models\AppSettings.cs" Link="AppSettings.cs" />
+    <Compile Include="..\..\src\Ember\ViewModels\LogViewModel.cs" Link="LogViewModel.cs" />
   </ItemGroup>
 </Project>

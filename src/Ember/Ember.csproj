@@ -12,7 +12,7 @@
     <RootNamespace>Ember</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\ember.ico</ApplicationIcon>
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
     <Product>Ember</Product>
     <Description>Ember – PC temperature monitor and overlay</Description>
     <Copyright>© 2026 Conner Killian. MIT License.</Copyright>

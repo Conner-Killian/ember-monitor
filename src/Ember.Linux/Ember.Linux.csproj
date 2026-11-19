@@ -10,7 +10,7 @@
     <LangVersion>latest</LangVersion>
     <AssemblyName>ember-monitor</AssemblyName>
     <RootNamespace>Ember</RootNamespace>
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
     <Product>Ember</Product>
     <Description>Ember – PC temperature monitor and overlay</Description>
     <Copyright>© 2026 Conner Killian. MIT License.</Copyright>

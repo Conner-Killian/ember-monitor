@@ -1,7 +1,9 @@
 // LogTool: checks the temperature log engine and creates sample logs.
 //   dotnet run --project tools/LogTool -- selftest
 //   dotnet run --project tools/LogTool -- seed <file> <days>     realistic sample data ending now
+using Ember.Models;
 using Ember.Services;
+using Ember.ViewModels;
 
 int failures = 0;
 void Check(bool ok, string what) { Console.WriteLine($"{(ok ? "PASS" : "FAIL")}  {what}"); if (!ok) failures++; }
@@ -184,8 +186,23 @@ try
 
     // 9b. Time axis: a sensible number of grid lines for every chart length.
     long nowT = TemperatureLog.Minute(DateTime.UtcNow);
-    var tickCounts = new[] { 1, 7, 14, 30, 60, 90, 180, 365 }.Select(d => (d, n: LogAnalysis.Ticks(nowT - TemperatureLog.RowsForDays(d) + 1, nowT).Count)).ToList();
-    Check(tickCounts.All(t => t.n is >= 4 and <= 16), "grid lines per range: " + string.Join(", ", tickCounts.Select(t => $"{t.d}d={t.n}")));
+    var tickCounts = LogViewModel.ViewOptions(365).Select(h => (h, n: LogAnalysis.Ticks(nowT - h * 60 + 1, nowT).Count)).ToList();
+    Check(tickCounts.All(t => t.n is >= 4 and <= 16), "grid lines per range: " + string.Join(", ", tickCounts.Select(t => $"{LogViewModel.RangeText(t.h)}={t.n}")));
+    Check(string.Join(",", LogViewModel.ViewOptions(1)) == "1,3,6,12,24" && LogViewModel.ViewOptions(7).Last() == 168 && LogViewModel.ViewOptions(10).Last() == 240,
+          "chart lengths: hours first, then days up to what the log keeps");
+    Check(LogViewModel.RangeText(1) == "1 hour" && LogViewModel.RangeText(3) == "3 hours" && LogViewModel.RangeText(24) == "24 hours" && LogViewModel.RangeText(4320) == "6 months",
+          "chart length names");
+    // Settings from 1.2.0 (chart length in days) load as hours and are saved without the old field.
+    var cfgDir = Path.Combine(dir, "cfg");
+    Directory.CreateDirectory(cfgDir);
+    Environment.SetEnvironmentVariable("EMBER_CONFIG_DIR", cfgDir);
+    File.WriteAllText(Path.Combine(cfgDir, "settings.json"), "{\"LogRetentionDays\":30,\"LogViewDays\":14}");
+    var oldCfg = AppSettings.Load();
+    oldCfg.Save();
+    var savedCfg = File.ReadAllText(Path.Combine(cfgDir, "settings.json"));
+    Check(oldCfg.LogViewHours == 14 * 24 && LogViewModel.ViewHours(oldCfg) == 14 * 24 && !savedCfg.Contains("LogViewDays") && savedCfg.Contains("\"LogViewHours\": 336"),
+          "1.2.0 chart length (14 days) carries over as 336 hours");
+    Environment.SetEnvironmentVariable("EMBER_CONFIG_DIR", null);
     Check(LogAnalysis.Duration(0) == "Never", "no time above warning reads \"Never\"");
 
     // 9c. Reading speed on a full year (what the Log page does on every refresh).
@@ -213,6 +230,21 @@ try
         var sd = s.Read(TemperatureLog.Minute(e2) - TemperatureLog.RowsForDays(7) + 1, TemperatureLog.Minute(e2));
         var days = LogAnalysis.Daily(sd.Single(x => x.Series.Key == "cpu").Points);
         Check(days.Count is >= 7 and <= 8, $"daily summary has {days.Count} days");
+    }
+
+    // 9d. Short chart lengths: page status and the daily summary.
+    var cfgS = new AppSettings();
+    using (var g = TemperatureLog.Open(Path.Combine(dir, "gap.bin"), TemperatureLog.RowsForDays(7)))
+    {
+        var e5 = DateTime.UtcNow;
+        Simulate(g, e5.AddMinutes(-30), e5, 10, new Random(11), honourPattern: false);
+        var fresh = LogViewModel.Build(g, 1, cfgS, e5);
+        Check(fresh.Status.StartsWith("Recording since") && fresh.Cards[0].Bins.Length == 60 && fresh.Days.Count == 0,
+              $"new log, 1 hour view: \"{fresh.Status}\", one column a minute, no daily summary");
+        Simulate(g, e5.AddDays(-2), e5.AddHours(-3), 10, new Random(12), honourPattern: false);
+        var gap = LogViewModel.Build(g, 1, cfgS, e5);
+        Check(gap.Status == "Showing the last 1 hour", $"closed for a while before the hour: \"{gap.Status}\" (not \"Recording since\")");
+        Check(LogViewModel.Build(g, 24, cfgS, e5).Days.Count > 0, "24 hour view keeps the daily summary");
     }
 }
 finally
