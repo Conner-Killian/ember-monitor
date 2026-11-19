@@ -1,79 +1,141 @@
-# Ember
+<p align="center">
+  <img src="src/Ember/Assets/ember.png" width="96" alt="Ember icon">
+</p>
 
-A good-looking PC temperature monitor for **Windows 10/11 and Linux**: a small always-on-top **overlay**
-for your desktop and games, plus a full **dashboard** with live graphs.
+<h1 align="center">Ember</h1>
 
-![icon](src/Ember/Assets/ember.png)
+<p align="center">
+  A hardware temperature monitor for Windows and Linux, with an always-on-top desktop overlay and a live dashboard.
+</p>
 
-**Linux:** .deb (Debian/Ubuntu), .rpm (Fedora/openSUSE), Arch package and AppImage. See
-[packaging/linux/README-linux.md](packaging/linux/README-linux.md) for install commands, the Wayland
-hotkey and sensor setup.
+---
 
-## Installing on Windows
+## Features
 
-1. Run `Ember-Setup-1.0.6.exe`.
-2. Windows SmartScreen may say *"Windows protected your PC"* because the installer isn't code-signed.
-   Click **More info → Run anyway**.
-3. Leave **"Install the PawnIO driver"** ticked. It downloads the official signed driver from
-   [pawnio.eu](https://pawnio.eu), and Ember needs it to read CPU, RAM and motherboard temperatures.
-   GPU and drive temperatures work without it.
-4. Ember needs administrator rights, because Windows only exposes CPU/RAM sensors to elevated apps.
-   You only approve that once, during install: the installer registers two scheduled tasks, so after that Ember
-   starts without a UAC prompt, both at sign-in and when you open it from the Start menu, a shortcut or Raycast.
-   Opening it while it's already running just brings the dashboard to the front.
+- **Overlay**: a compact, always-on-top readout of CPU, GPU, RAM and drive temperatures, toggled with a
+  global hotkey. Three styles (Pill, Card, Rings), adjustable size and opacity, and optional usage and
+  power-draw readings. When locked, clicks pass straight through it.
+- **Dashboard**: current, minimum and maximum readings with live graphs for each component.
+- **All sensors**: every sensor the system reports (temperatures, loads, clocks, fans, voltages, power), grouped by device.
+- **Alerts**: readings change colour at configurable thresholds, with optional desktop notifications
+  when a component stays hot.
+- **Tray icon**: can show the CPU temperature directly in the notification area.
+- Celsius or Fahrenheit, multi-monitor support, start on sign-in, dark theme with a configurable accent colour.
 
-## Using it
+Usage figures (CPU, GPU, RAM) are calculated the same way as Windows Task Manager, so the two agree.
 
-| | |
+## Supported platforms
+
+| Platform | Requirements |
 |---|---|
-| **Toggle overlay** | **Right Ctrl + Right Alt** by default. Press and release both with no other key. You can change it under *Overlay → Hotkey*. |
-| **Move overlay** | *Overlay → Unlock to move* (or tray menu). Drag it anywhere on screen, even onto the taskbar. Lock it again and clicks pass straight through. |
-| **Overlay styles** | Pill, Card or Rings. Show CPU / GPU / RAM / each drive, usage %, power draw; opacity and size sliders. |
-| **Units** | °C / °F in *Settings* or the tray menu. |
-| **Alerts** | Readings turn amber or red at thresholds you set. Optional Windows notification when something stays hot. |
-| **Tray** | Closing the window keeps Ember in the tray. Right-click the flame icon for quick options or **Exit**. |
+| Windows 10 / 11 (x64) | Administrator rights during installation. The [PawnIO](https://pawnio.eu) driver is required for CPU, RAM and motherboard sensors. |
+| Linux (x64) | X11 or Wayland session. Packages for Debian/Ubuntu, Fedora/openSUSE and Arch, plus an AppImage. |
 
-The overlay works over borderless/windowed games. Exclusive-fullscreen games draw over everything, so the overlay can't show there.
+Builds are self-contained; .NET does not need to be installed to run Ember.
+
+## Installation
+
+### Windows
+
+1. Download and run `Ember-Setup-<version>.exe`.
+2. The installer is not code-signed, so SmartScreen may show *"Windows protected your PC"*. Select
+   **More info → Run anyway**.
+3. Keep **Install the PawnIO driver** selected. It downloads the signed driver from pawnio.eu.
+   Without it, only GPU and drive temperatures are available.
+
+Reading CPU and motherboard sensors requires administrator rights. The installer registers scheduled
+tasks so Ember starts elevated without a UAC prompt, both at sign-in and when launched manually.
+
+### Linux
+
+| Distribution | Command |
+|---|---|
+| Debian, Ubuntu, Mint, Pop!_OS | `sudo apt install ./ember-monitor_<version>-1_amd64.deb` |
+| Fedora, RHEL-based | `sudo dnf install ./ember-monitor-<version>-1.x86_64.rpm` |
+| openSUSE | `sudo zypper install ./ember-monitor-<version>-1.x86_64.rpm` |
+| Arch, Manjaro, EndeavourOS | `sudo pacman -U ./ember-monitor-<version>-1-x86_64.pkg.tar.zst` |
+| Other | `chmod +x Ember-<version>-x86_64.AppImage && ./Ember-<version>-x86_64.AppImage` |
+
+See [packaging/linux/README-linux.md](packaging/linux/README-linux.md) for hotkey setup on Wayland,
+tray support on GNOME, and enabling additional sensors.
+
+## Usage
+
+| Action | How |
+|---|---|
+| Show / hide the overlay | **Right Ctrl + Right Alt** (default). Change it under *Overlay → Hotkey*. |
+| Move the overlay | *Overlay → Unlock to move*, or from the tray menu. Drag it into place, then lock it again. |
+| Pin to a corner or monitor | *Overlay → Position*. |
+| Change units, thresholds and startup | *Settings*. |
+| Quit | Right-click the tray icon → **Exit**. Closing the main window keeps Ember running in the tray. |
+
+The overlay is visible over windowed and borderless-fullscreen games. Exclusive-fullscreen games draw
+above all other windows, so the overlay cannot appear there.
+
+### Command-line options
+
+| Option | Description |
+|---|---|
+| `--snapshot <folder>` | Writes a full sensor report (`sensors.txt`) and screenshots of every page, for bug reports. |
+| `--exit` | Closes the running instance. |
+| `--toggle-overlay` | Shows or hides the overlay (Linux; used for desktop keyboard shortcuts). |
+| `--tray` | Starts in the background without opening the main window. |
+| `--profile <file>` | Measures Ember's own CPU usage (Windows). |
+| `--register` / `--cleanup` | Creates / removes the startup tasks. Used by the installer (Windows, elevated). |
+
+Settings and the error log are stored in `%APPDATA%\Ember` on Windows and `~/.config/Ember` on Linux.
 
 ## Building from source
 
-Requirements: .NET 8 SDK and Inno Setup 6 (`winget install Microsoft.DotNet.SDK.8 JRSoftware.InnoSetup`).
+### Windows installer
+
+Requires the .NET 8 SDK and Inno Setup 6:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File tools\build-installer.ps1 -Version 1.0.6
+winget install Microsoft.DotNet.SDK.8 JRSoftware.InnoSetup
+powershell -ExecutionPolicy Bypass -File tools\build-installer.ps1 -Version <version>
 ```
 
-The installer lands in `dist\`. The app is published self-contained, so systems don't need .NET installed to run.
+The installer is written to `dist\`.
 
-**Linux packages** (from Windows, needs WSL with Debian: `wsl --install -d Debian`):
+### Linux packages
+
+On Linux with the .NET 8 SDK:
+
+```bash
+tools/build-linux.sh --version <version>
+```
+
+On Windows, using WSL (Debian):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File tools\build-linux.ps1
+powershell -ExecutionPolicy Bypass -File tools\build-linux.ps1 -Version <version>
 ```
 
-or on a Linux machine with the .NET 8 SDK: `tools/build-linux.sh`. Everything lands in `dist/linux/`.
-Set `HOMEPAGE` (your GitHub repo URL), `MAINTAINER` and `LICENSE` before a public release; they go into
-the package metadata and the AUR `PKGBUILD`.
+Output is written to `dist/linux/`: `.deb`, `.rpm`, Arch package, AppImage, tarball, AUR `PKGBUILD` and
+`SHA256SUMS`. Package metadata is taken from the `HOMEPAGE`, `MAINTAINER` and `LICENSE` environment
+variables.
 
-### Project layout
+## Project structure
 
-- `src/Ember.Linux`: the Linux app (Avalonia). Shares the settings model, sensor model, temperature
-  formatting, alerts and view-models with the Windows app as linked files; Linux sensors come from
-  hwmon (`/sys/class/hwmon`), `/proc`, RAPL and NVML
-- `packaging/linux`: desktop entry, AppStream metadata, icons, nfpm config (deb/rpm/Arch), AUR PKGBUILD template
+```
+src/Ember/            Windows app (WPF, .NET 8)
+  Services/           sensor polling, hotkey, tray, alerts, startup tasks, theming
+  ViewModels/         view-models shared with the Linux app
+  Views/              main window, pages and the overlay window
+  Controls/           ring gauge, bar and sparkline controls
+src/Ember.Linux/      Linux app (Avalonia); reads hwmon, /proc, RAPL and NVML
+installer/            Inno Setup script
+packaging/linux/      desktop entry, AppStream metadata, icons, nfpm config, PKGBUILD template
+tools/                build scripts and icon generator
+```
 
-- `src/Ember/Services`: sensor polling (LibreHardwareMonitor), global hotkey (low-level keyboard hook), startup task, alerts, tray, theming
-- `src/Ember/Views`: main window + pages (Dashboard, All sensors, Overlay, Settings) and the overlay window
-- `src/Ember/Controls`: custom-drawn ring gauge, bar and sparkline
-- `installer/Ember.iss`: Inno Setup script
-- `tools/make-icon.ps1`: regenerates the app icon
+## Acknowledgements
 
-### Diagnostics
+- [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) (MPL 2.0): sensor access on Windows
+- [PawnIO](https://pawnio.eu): signed kernel driver for low-level hardware access on Windows
+- [Avalonia](https://avaloniaui.net) (MIT): UI framework for the Linux app
 
-- `Ember.exe --snapshot <folder>`: renders every page and overlay style to PNG and writes `sensors.txt`, a full sensor dump
-- `Ember.exe --profile <file>`: measures CPU use with the window open/hidden and the overlay on/off
-- `Ember.exe --exit`: closes a running instance (the installer uses this)
-- `Ember.exe --register` / `--cleanup`: create / remove the no-UAC scheduled tasks (run elevated, by the installer and uninstaller)
-- Settings and `error.log` live in `%APPDATA%\Ember`
+## License
 
-Sensor data is provided by [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) (MPL 2.0).
+No license has been chosen yet. All rights reserved.
