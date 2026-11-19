@@ -24,14 +24,21 @@ if (-not $Version) { $Version = ([xml](Get-Content src\Ember\Ember.csproj)).Proj
 $Notes = (Resolve-Path $Notes).Path
 $tag = "v$Version"
 
+# Windows PowerShell turns anything a native tool writes to stderr (progress, "not found") into a
+# terminating error under 'Stop'. Run native tools with 'Continue' and check $LASTEXITCODE instead.
+function Invoke-Native([scriptblock]$Block) {
+    $old = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    try { & $Block } finally { $ErrorActionPreference = $old }
+}
+
 # ---- safety checks ------------------------------------------------------------------------
 $key = if ($env:EMBER_SIGNING_KEY) { $env:EMBER_SIGNING_KEY } else { Join-Path $env:USERPROFILE '.ember-signing\update-signing-key.pem' }
 if (-not (Test-Path $key)) { throw "Signing key not found at $key" }
 if ((Resolve-Path $key).Path.StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) { throw "The signing key is inside the repository ($key). Move it out first." }
 if (git status --porcelain) { throw "Uncommitted changes. Commit and push first, so the release tag matches the code." }
-git fetch --quiet origin
+Invoke-Native { git fetch --quiet origin 2>&1 | Out-Null }
 if ((git rev-parse HEAD) -ne (git rev-parse '@{u}')) { throw "Local main and origin/main differ. Push (or pull) first." }
-& $gh release view $tag 2>$null | Out-Null
+Invoke-Native { & $gh release view $tag 2>&1 | Out-Null }
 if ($LASTEXITCODE -eq 0) { throw "Release $tag already exists." }
 
 # ---- build ----------------------------------------------------------------------------------
@@ -50,12 +57,12 @@ $linux = @(
 foreach ($f in @($exe) + $linux) { if (-not (Test-Path $f)) { throw "Missing $f" } }
 
 # ---- sign + verify ----------------------------------------------------------------------------
-dotnet build tools\EmberSign\EmberSign.csproj -c Release -nologo -v q | Out-Null
+Invoke-Native { dotnet build tools\EmberSign\EmberSign.csproj -c Release -nologo -v q | Out-Null }
 if ($LASTEXITCODE) { throw "EmberSign build failed" }
 $sign = "tools\EmberSign\bin\Release\net8.0\EmberSign.dll"
-dotnet $sign sign $exe
+Invoke-Native { dotnet $sign sign $exe 2>&1 }
 if ($LASTEXITCODE) { throw "Signing failed" }
-dotnet $sign verify $exe
+Invoke-Native { dotnet $sign verify $exe 2>&1 }
 if ($LASTEXITCODE) { throw "Signature check against the app's trusted key failed" }
 
 # ---- checksums + publish ----------------------------------------------------------------------
@@ -69,6 +76,6 @@ Copy-Item $sums "dist\SHA256SUMS" -Force
 
 $ghArgs = @('release', 'create', $tag, '--target', 'main', '--title', "Ember $Version", '--notes-file', $Notes)
 if ($Draft) { $ghArgs += '--draft' } else { $ghArgs += '--latest' }
-& $gh @ghArgs @assets "dist\SHA256SUMS"
+Invoke-Native { & $gh @ghArgs @assets "dist\SHA256SUMS" 2>&1 }
 if ($LASTEXITCODE) { throw "gh release create failed" }
 Write-Host "Released $tag" -ForegroundColor Green
