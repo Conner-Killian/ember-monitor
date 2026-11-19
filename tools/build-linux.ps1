@@ -20,5 +20,7 @@ function To-Wsl([string]$p) {
 }
 $script = To-Wsl "$root\tools\build-linux.sh"
 $pub = To-Wsl "$root\$publish"
+# Pass package metadata (HOMEPAGE, MAINTAINER, LICENSE) through to WSL when set.
+$env:WSLENV = (@('HOMEPAGE/u', 'MAINTAINER/u', 'LICENSE/u') + @($env:WSLENV -split ':' | Where-Object { $_ })) -join ':'
 wsl.exe -d $Distro -u root -- bash "$script" --version $Version --publish-dir "$pub"
 if ($LASTEXITCODE) { throw "Linux packaging failed" }
