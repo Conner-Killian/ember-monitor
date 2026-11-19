@@ -8,6 +8,10 @@
   A hardware temperature monitor for Windows and Linux, with an always-on-top desktop overlay and a live dashboard.
 </p>
 
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" alt="Ember's dashboard showing CPU and GPU temperature gauges, five-minute graphs, memory and drive temperatures" width="900">
+</p>
+
 ---
 
 > [!NOTE]
@@ -30,6 +34,16 @@
 - Celsius or Fahrenheit, multi-monitor support, start on sign-in, dark theme with a configurable accent colour.
 
 Usage figures (CPU, GPU, RAM) are calculated the same way as Windows Task Manager, so the two agree.
+
+## Screenshots
+
+**Overlay styles:** Pill, Card and Rings, showing everything or just the CPU and GPU.
+
+<img src="docs/screenshots/overlay-styles.png" alt="The three overlay styles: Pill, Card and Rings, with CPU, GPU, RAM and drive temperatures" width="900">
+
+**All sensors:** every device Ember detects, each expanding to its full list of readings.
+
+<img src="docs/screenshots/all-sensors.png" alt="The All sensors page listing the motherboard, processor, memory modules, graphics cards and drives" width="900">
 
 ## Supported platforms
 
