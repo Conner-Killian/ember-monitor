@@ -15,7 +15,11 @@ AppId={{3E143F93-7566-40BA-A9D1-4E310812FA78}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
-AppPublisher={#AppName}
+AppPublisher=Conner Killian
+AppPublisherURL=https://github.com/Conner-Killian/ember-monitor
+AppSupportURL=https://github.com/Conner-Killian/ember-monitor/issues
+AppUpdatesURL=https://github.com/Conner-Killian/ember-monitor/releases
+AppCopyright=Copyright (c) 2026 Conner Killian. MIT License.
 VersionInfoVersion={#AppVersion}
 VersionInfoDescription={#AppName} Setup
 DefaultDirName={autopf}\{#AppName}
@@ -50,6 +54,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"

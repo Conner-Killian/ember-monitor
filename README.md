@@ -10,6 +10,10 @@
 
 ---
 
+> [!NOTE]
+> **Project status:** Ember is a personal project, shared as-is. It is updated when time allows, and
+> issues and pull requests are welcome but may not always get a response.
+
 ## Features
 
 - **Overlay**: a compact, always-on-top readout of CPU, GPU, RAM and drive temperatures, toggled with a
@@ -138,4 +142,6 @@ tools/                build scripts and icon generator
 
 ## License
 
-No license has been chosen yet. All rights reserved.
+Ember is released under the [MIT License](LICENSE). It is provided as-is, without warranty of any kind.
+
+Ember reads hardware sensors and, on Windows, uses a kernel driver (PawnIO) to do so. Use it at your own risk.

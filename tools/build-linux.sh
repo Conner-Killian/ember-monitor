@@ -24,9 +24,9 @@ while [ $# -gt 0 ]; do
   esac
 done
 [ -n "$VERSION" ] || VERSION=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' "$ROOT/src/Ember.Linux/Ember.Linux.csproj" | head -n1)
-: "${MAINTAINER:=Ember maintainers <ember-monitor@users.noreply.github.com>}"
-: "${HOMEPAGE:=https://github.com/OWNER/ember-monitor}"
-: "${LICENSE:=LicenseRef-proprietary}"
+: "${MAINTAINER:=Conner Killian <44344471+Conner-Killian@users.noreply.github.com>}"
+: "${HOMEPAGE:=https://github.com/Conner-Killian/ember-monitor}"
+: "${LICENSE:=MIT}"
 NFPM_VERSION=2.41.0
 
 OUT="$ROOT/dist/linux"
@@ -72,6 +72,8 @@ sed -e "s/<release version=\"[^\"]*\" date=\"[^\"]*\"/<release version=\"$VERSIO
     "$ROOT/packaging/linux/ember-monitor.metainfo.xml" > "$STAGE/usr/share/metainfo/ember-monitor.metainfo.xml"
 install -m644 "$ROOT/packaging/linux/modules-load.conf" "$STAGE/usr/lib/modules-load.d/ember-monitor.conf"
 install -m644 "$ROOT/packaging/linux/README-linux.md" "$STAGE/usr/share/doc/ember-monitor/README.md"
+install -m644 "$ROOT/LICENSE" "$STAGE/usr/share/doc/ember-monitor/LICENSE"
+install -Dm644 "$ROOT/LICENSE" "$STAGE/usr/share/licenses/ember-monitor/LICENSE"   # Arch convention
 for d in "$ROOT"/packaging/linux/icons/*/; do
   s=$(basename "$d")
   install -Dm644 "$d/ember-monitor.png" "$STAGE/usr/share/icons/hicolor/$s/apps/ember-monitor.png"

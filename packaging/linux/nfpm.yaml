@@ -75,6 +75,9 @@ contents:
   - src: ${STAGE}/usr/share/doc/ember-monitor/
     dst: /usr/share/doc/ember-monitor/
     type: tree
+  - src: ${STAGE}/usr/share/licenses/ember-monitor/LICENSE
+    dst: /usr/share/licenses/ember-monitor/LICENSE
+    packager: archlinux
 
 scripts:
   postinstall: packaging/linux/scripts/postinstall.sh

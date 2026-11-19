@@ -15,7 +15,7 @@
     <Version>1.0.6</Version>
     <Product>Ember</Product>
     <Description>Ember – PC temperature monitor and overlay</Description>
-    <Copyright>© 2026</Copyright>
+    <Copyright>© 2026 Conner Killian. MIT License.</Copyright>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <NoWarn>$(NoWarn);CA1416;WFAC010</NoWarn>

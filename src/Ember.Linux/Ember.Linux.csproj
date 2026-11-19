@@ -13,7 +13,7 @@
     <Version>1.0.6</Version>
     <Product>Ember</Product>
     <Description>Ember – PC temperature monitor and overlay</Description>
-    <Copyright>© 2026</Copyright>
+    <Copyright>© 2026 Conner Killian. MIT License.</Copyright>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
     <!-- No libicu dependency: package works the same on every distro. -->
     <InvariantGlobalization>true</InvariantGlobalization>
