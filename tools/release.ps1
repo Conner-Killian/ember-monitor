@@ -52,8 +52,8 @@ $linux = @(
     "dist\linux\ember-monitor-$Version-1.x86_64.rpm",
     "dist\linux\ember-monitor-$Version-1-x86_64.pkg.tar.zst",
     "dist\linux\Ember-$Version-x86_64.AppImage",
-    "dist\linux\ember-monitor-$Version-linux-x64.tar.gz",
-    "dist\linux\PKGBUILD")
+    "dist\linux\ember-monitor-$Version-linux-x64.tar.gz")
+# dist\linux\PKGBUILD (for the AUR) is built too but not attached to the release.
 foreach ($f in @($exe) + $linux) { if (-not (Test-Path $f)) { throw "Missing $f" } }
 
 # ---- sign + verify ----------------------------------------------------------------------------
@@ -70,7 +70,7 @@ $assets = @($exe, "$exe.sig") + $linux
 $bad = $assets | Where-Object { $_ -match '\.(pem|key|p8|p12|pfx)$' -or (Select-String -Path $_ -Pattern 'PRIVATE KEY-----' -SimpleMatch -Quiet -ErrorAction SilentlyContinue) }
 if ($bad) { throw "Refusing to upload what looks like a key: $bad" }
 $sums = "dist\SHA256SUMS-$Version"
-$lines = $assets | Where-Object { $_ -notlike '*PKGBUILD' } | ForEach-Object { "$((Get-FileHash $_ -Algorithm SHA256).Hash.ToLower())  $(Split-Path $_ -Leaf)" }
+$lines = $assets | ForEach-Object { "$((Get-FileHash $_ -Algorithm SHA256).Hash.ToLower())  $(Split-Path $_ -Leaf)" }
 [IO.File]::WriteAllText((Join-Path $root $sums), ($lines -join "`n") + "`n", (New-Object Text.UTF8Encoding($false)))
 Copy-Item $sums "dist\SHA256SUMS" -Force
 
