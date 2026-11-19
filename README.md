@@ -9,7 +9,7 @@ for your desktop and games, plus a full **dashboard** with live graphs.
 [packaging/linux/README-linux.md](packaging/linux/README-linux.md) for install commands, the Wayland
 hotkey and sensor setup.
 
-## Installing on Windows (for friends)
+## Installing on Windows
 
 1. Run `Ember-Setup-1.0.6.exe`.
 2. Windows SmartScreen may say *"Windows protected your PC"* because the installer isn't code-signed.
@@ -43,7 +43,7 @@ Requirements: .NET 8 SDK and Inno Setup 6 (`winget install Microsoft.DotNet.SDK.
 powershell -ExecutionPolicy Bypass -File tools\build-installer.ps1 -Version 1.0.6
 ```
 
-The installer lands in `dist\`. The app is published self-contained, so friends don't need .NET installed.
+The installer lands in `dist\`. The app is published self-contained, so systems don't need .NET installed to run.
 
 **Linux packages** (from Windows, needs WSL with Debian: `wsl --install -d Debian`):
 
