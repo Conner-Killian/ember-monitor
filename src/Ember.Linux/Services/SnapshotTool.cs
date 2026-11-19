@@ -29,6 +29,12 @@ public static class SnapshotTool
         var sb = new StringBuilder();
         sb.AppendLine($"Ember {typeof(App).Assembly.GetName().Version} · {Desktop.Name} · {Desktop.SessionType} session · demo={App.Sensors.IsDemo}");
         sb.AppendLine($"Kernel: {SysFs.ReadText("/proc/sys/kernel/osrelease")?.Trim()}  Hotkey listener: {(App.Hotkey.IsActive ? "XInput2" : "none (Wayland)")}");
+        try
+        {
+            var latest = await UpdateChecker.GetLatestAsync();
+            sb.AppendLine($"Update check: latest release {latest?.VersionText ?? "none"}, running {UpdateChecker.Format(UpdateChecker.Current)}");
+        }
+        catch (Exception ex) { sb.AppendLine("Update check failed: " + ex.GetBaseException().Message); }
         var h = App.Sensors.Hints;
         sb.AppendLine($"Hints: cpuTemp={!h.NoCpuTemperature} nvml={!h.NvidiaWithoutNvml} drivetemp={!h.SataWithoutDrivetemp} rapl={!h.CpuPowerDenied} dimm={!h.NoDimmSensors} board={!h.NoBoardSensors}");
         if (snap == null) { sb.AppendLine("No sensor snapshot: " + App.Sensors.FailureMessage); File.WriteAllText(Path.Combine(dir, "sensors.txt"), sb.ToString()); return; }

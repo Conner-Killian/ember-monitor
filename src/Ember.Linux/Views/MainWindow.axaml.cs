@@ -46,7 +46,8 @@ public partial class MainWindow : Window
         Deactivated += (_, _) => App.Current.UpdateOverlayVisibility();
         PropertyChanged += (_, e) => { if (e.Property == WindowStateProperty) App.Current.UpdateOverlayVisibility(); };
         App.SettingsChanged += SyncChrome;
-        Closed += (_, _) => App.SettingsChanged -= SyncChrome;
+        App.Updates.Changed += SyncUpdate;
+        Closed += (_, _) => { App.SettingsChanged -= SyncChrome; App.Updates.Changed -= SyncUpdate; };
 
         ShowPage(_dashboard = new DashboardPage());
         SyncChrome();
@@ -67,6 +68,25 @@ public partial class MainWindow : Window
         this.FindControl<ToggleSwitch>("OverlayQuickToggle")!.IsChecked = s.OverlayVisible;
         this.FindControl<LayoutTransformControl>("ScaleHost")!.LayoutTransform = new ScaleTransform(s.UiScale, s.UiScale);
         this.FindControl<TextBlock>("HotkeyHint")!.Text = OverlayPage.HotkeySummary();
+        SyncUpdate();
+    }
+
+    // ------------------------------------------------------------------ update banner
+    private void SyncUpdate()
+    {
+        var u = App.Updates;
+        bool show = u.IsAvailable && App.Settings.DismissedUpdateVersion != u.Latest!.VersionText;
+        this.FindControl<Border>("UpdateCard")!.IsVisible = show;
+        if (show) this.FindControl<TextBlock>("UpdateText")!.Text = $"Ember {u.Latest!.VersionText} is out. You have {UpdateChecker.Format(UpdateChecker.Current)}.";
+    }
+
+    private void UpdateDownload_Click(object? sender, RoutedEventArgs e) =>
+        Desktop.OpenUrl(App.Updates.Latest?.PageUrl ?? UpdateChecker.ReleasesPage);
+
+    private void UpdateLater_Click(object? sender, RoutedEventArgs e)
+    {
+        if (App.Updates.Latest is { } l) App.Settings.DismissedUpdateVersion = l.VersionText;
+        App.NotifySettingsChanged();
     }
 
     private void ShowPage(UserControl page)

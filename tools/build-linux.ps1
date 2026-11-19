@@ -1,6 +1,6 @@
 # Builds Ember's Linux packages from Windows: publishes the Linux build here, then packages it
 # inside WSL (Debian) with tools/build-linux.sh. Output: dist\linux\
-#   powershell -ExecutionPolicy Bypass -File tools\build-linux.ps1 [-Version 1.0.6] [-Distro Debian]
+#   powershell -ExecutionPolicy Bypass -File tools\build-linux.ps1 [-Version 1.1.0] [-Distro Debian]
 param([string]$Version = "", [string]$Distro = "Debian")
 $ErrorActionPreference = 'Stop'
 $root = Resolve-Path "$PSScriptRoot\.."

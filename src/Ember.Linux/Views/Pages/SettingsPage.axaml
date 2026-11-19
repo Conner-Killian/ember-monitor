@@ -180,6 +180,30 @@
                 </Grid>
             </Border>
 
+            <!-- ===== Updates ===== -->
+            <TextBlock Text="Updates" Classes="section" />
+            <Border Classes="row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                        <TextBlock x:Name="UpdateTitle" Text="Ember" Classes="rowTitle" />
+                        <TextBlock x:Name="UpdateDesc" Classes="rowDesc" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Button x:Name="CheckUpdatesButton" Content="Check now" Click="CheckUpdates_Click" />
+                        <Button x:Name="DownloadUpdateButton" Classes="accent" Content="Download" Click="DownloadUpdate_Click" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <Border Classes="row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                        <TextBlock Text="Check for updates automatically" Classes="rowTitle" />
+                        <TextBlock Text="Checks GitHub when Ember starts and every 6 hours, and tells you when a new version is out. Install it with your package manager or the new AppImage." Classes="rowDesc" />
+                    </StackPanel>
+                    <ToggleSwitch x:Name="AutoUpdateToggle" Grid.Column="1" Click="Changed" />
+                </Grid>
+            </Border>
+
             <!-- ===== Sensor setup ===== -->
             <TextBlock Text="Sensor setup" Classes="section" />
             <StackPanel x:Name="HintsPanel" />

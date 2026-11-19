@@ -27,6 +27,18 @@
                             <TextBlock x:Name="HotkeyHint" Classes="caption" Margin="0,4,0,0" TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
+                    <!-- Update banner (above the overlay card) -->
+                    <Border x:Name="UpdateCard" DockPanel.Dock="Bottom" Classes="card" Padding="14,12" CornerRadius="12" Margin="0,0,0,8"
+                            BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" IsVisible="False">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Update available" FontSize="13" FontWeight="SemiBold" />
+                            <TextBlock x:Name="UpdateText" Classes="caption" TextWrapping="Wrap" Margin="0,0,0,6" />
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <Button Classes="accent" Content="Download" Click="UpdateDownload_Click" />
+                                <Button Grid.Column="2" Classes="ghost" Content="Later" Click="UpdateLater_Click" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
                     <StackPanel>
                         <RadioButton x:Name="NavDashboard" Classes="nav" Tag="dashboard" Content="Dashboard" IsChecked="True" IsCheckedChanged="Nav_Changed" />
                         <RadioButton x:Name="NavSensors" Classes="nav" Tag="list" Content="All sensors" IsCheckedChanged="Nav_Changed" />

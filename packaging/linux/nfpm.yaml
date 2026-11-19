@@ -27,6 +27,8 @@ depends:
   - libice6
   - libsm6
   - libfontconfig1
+  # HTTPS (update checks). Debian 13 / Ubuntu 24.04 renamed the package for the 64-bit time_t transition.
+  - libssl3t64 | libssl3
 recommends:
   - libnotify-bin
 suggests:
@@ -43,6 +45,7 @@ overrides:
       - libICE.so.6()(64bit)
       - libSM.so.6()(64bit)
       - libfontconfig.so.1()(64bit)
+      - libssl.so.3()(64bit)
     recommends:
       - libnotify
   archlinux:
@@ -53,6 +56,7 @@ overrides:
       - libice
       - libsm
       - fontconfig
+      - openssl
     recommends: []
     suggests: []
 

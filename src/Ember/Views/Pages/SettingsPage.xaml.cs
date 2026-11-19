@@ -28,7 +28,8 @@ public partial class SettingsPage : UserControl
         App.SettingsChanged += () => { if (!_loading && IsLoaded) Load(); };
         // Refresh when shown: the GPU list and driver status may not have been known when the page
         // was first built (sensors still starting).
-        Loaded += (_, _) => Load();
+        Loaded += (_, _) => { Load(); App.Updates.Changed += SyncUpdates; };
+        Unloaded += (_, _) => App.Updates.Changed -= SyncUpdates;
         // Enter commits a threshold, like leaving the box does.
         foreach (var tb in new[] { CpuWarn, CpuCrit, GpuWarn, GpuCrit, RamWarn, RamCrit, SsdWarn, SsdCrit, HddWarn, HddCrit })
             tb.KeyDown += (s, e) => { if (e.Key == Key.Enter) Threshold_LostFocus(s, e); };
@@ -72,7 +73,35 @@ public partial class SettingsPage : UserControl
             ? "CPU, memory and motherboard sensors are available."
             : "Needed for CPU, memory (DIMM) and motherboard temperatures. GPU and drive temperatures work without it.";
         DriverButton.Visibility = installed ? Visibility.Collapsed : Visibility.Visible;
+        AutoUpdateToggle.IsChecked = s.AutoCheckUpdates;
+        SyncUpdates();
         _loading = false;
+    }
+
+    private void SyncUpdates()
+    {
+        var u = App.Updates;
+        UpdateTitle.Text = $"Ember {UpdateChecker.Format(UpdateChecker.Current)}";
+        UpdateDesc.Text = u.IsAvailable && !u.CanInstall && !u.IsBusy
+            ? $"Ember {u.Latest!.VersionText} is available. Download it from the release page."
+            : u.Describe();
+        CheckUpdatesButton.IsEnabled = !u.IsBusy;
+        CheckUpdatesButton.Visibility = u.CanInstall ? Visibility.Collapsed : Visibility.Visible;
+        InstallUpdateButton.Visibility = u.CanInstall ? Visibility.Visible : Visibility.Collapsed;
+        InstallUpdateButton.IsEnabled = !u.IsBusy;
+        InstallUpdateButton.Content = u.State == UpdateState.Failed ? "Try again" : $"Update to {u.Latest?.VersionText}";
+        ReleaseNotesButton.Visibility = u.IsAvailable ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void CheckUpdates_Click(object sender, RoutedEventArgs e) => _ = App.Updates.CheckAsync();
+    private void InstallUpdate_Click(object sender, RoutedEventArgs e) => _ = App.Updates.InstallAsync();
+
+    private void ReleaseNotes_Click(object sender, RoutedEventArgs e)
+    {
+        // Ember runs as administrator: open the browser through Explorer so it runs as the normal user.
+        var url = App.Updates.Latest?.PageUrl ?? UpdateChecker.ReleasesPage;
+        if (url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            Process.Start(new ProcessStartInfo("explorer.exe", $"\"{url}\"") { UseShellExecute = true });
     }
 
     private void LoadThresholds()
@@ -107,6 +136,7 @@ public partial class SettingsPage : UserControl
         s.TrayShowsTemp = TrayTempToggle.IsChecked == true;
         s.AlertsColor = ColorToggle.IsChecked == true;
         s.AlertsNotify = NotifyToggle.IsChecked == true;
+        s.AutoCheckUpdates = AutoUpdateToggle.IsChecked == true;
         s.Backdrop = BdAcrylic.IsChecked == true ? Backdrop.Acrylic : BdSolid.IsChecked == true ? Backdrop.Solid : Backdrop.Mica;
         Commit();
     }

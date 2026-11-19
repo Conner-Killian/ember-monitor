@@ -8,3 +8,10 @@ dist/
 tools/.cache/
 *.user
 .vs/
+# Signing keys never belong in the repository (the update key lives in ~/.ember-signing/).
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+.ember-signing/

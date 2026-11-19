@@ -248,6 +248,35 @@
                 </Grid>
             </Border>
 
+            <!-- ===== Updates ===== -->
+            <TextBlock Text="Updates" Style="{StaticResource SectionTitle}" />
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,20,0">
+                        <TextBlock x:Name="UpdateTitle" Text="Ember" Style="{StaticResource RowTitle}" />
+                        <TextBlock x:Name="UpdateDesc" Style="{StaticResource RowDesc}" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="ReleaseNotesButton" Style="{StaticResource GhostButton}" Content="What's new" Margin="0,0,8,0" Click="ReleaseNotes_Click" />
+                        <Button x:Name="CheckUpdatesButton" Content="Check now" Click="CheckUpdates_Click" />
+                        <Button x:Name="InstallUpdateButton" Style="{StaticResource AccentButton}" Content="Update" Margin="8,0,0,0" Click="InstallUpdate_Click" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,140,0">
+                        <TextBlock Text="Check for updates automatically" Style="{StaticResource RowTitle}" />
+                        <TextBlock Text="Checks GitHub when Ember starts and every 6 hours. Updates only install when you choose, and only if they're signed with Ember's release key." Style="{StaticResource RowDesc}" />
+                    </StackPanel>
+                    <CheckBox x:Name="AutoUpdateToggle" Style="{StaticResource ToggleSwitch}" HorizontalAlignment="Right" Click="Changed" />
+                </Grid>
+            </Border>
+
             <!-- ===== Driver / about ===== -->
             <TextBlock Text="Sensors driver" Style="{StaticResource SectionTitle}" />
             <Border Style="{StaticResource SettingRow}">

@@ -7,7 +7,7 @@ pkgdesc="Temperature monitor with an always-on-top overlay for CPU, GPU, RAM and
 arch=('x86_64')
 url="@HOMEPAGE@"
 license=('@LICENSE@')
-depends=('libx11' 'libxext' 'libxi' 'libice' 'libsm' 'fontconfig')
+depends=('libx11' 'libxext' 'libxi' 'libice' 'libsm' 'fontconfig' 'openssl')
 optdepends=('libnotify: desktop notifications when something runs hot'
             'nvidia-utils: NVIDIA graphics card readings'
             'lm_sensors: sensors-detect, to find your motherboard sensor driver')

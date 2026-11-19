@@ -22,6 +22,9 @@ public partial class App : Application
     public static AppSettings Settings { get; private set; } = new();
     public static SensorService Sensors { get; private set; } = null!;
     public static HotkeyService Hotkey { get; private set; } = null!;
+    /// <summary>Checks GitHub for new releases. On Linux updates come from the package manager or a new AppImage, so there's no installer.</summary>
+    public static UpdateManager Updates { get; } = new(a => Dispatcher.UIThread.Post(a));
+    private bool? _autoUpdates;
     public static new App Current => (App)Application.Current!;
 
     /// <summary>Raised whenever settings change so windows can refresh.</summary>
@@ -33,7 +36,7 @@ public partial class App : Application
     private MainWindow? _main;
     private DispatcherTimer? _saveTimer;
     private TrayIcon? _tray;
-    private NativeMenuItem? _trayOverlay, _trayLock, _trayPill, _trayCard, _trayRings, _trayC, _trayF;
+    private NativeMenuItem? _trayOverlay, _trayLock, _trayPill, _trayCard, _trayRings, _trayC, _trayF, _trayUpdate;
     private WindowIcon? _appIcon;
     private string _trayIconKey = "";
     private bool _exiting, _started;
@@ -100,6 +103,18 @@ public partial class App : Application
 
         _alerts.Notify += (t, m) => Desktop.Notify(t, m);
         SetupTray();
+
+        Updates.Changed += SyncTrayMenu;
+        Updates.Found += info =>
+        {
+            if (Settings.NotifiedUpdateVersion == info.VersionText) return;
+            Settings.NotifiedUpdateVersion = info.VersionText;
+            Settings.Save();
+            Desktop.Notify("Ember update available",
+                $"Ember {info.VersionText} is out. Update with your package manager, or download it from the release page.", urgent: false);
+        };
+        _autoUpdates = Settings.AutoCheckUpdates;
+        if (!diagnostics) Updates.SetAutomatic(Settings.AutoCheckUpdates);
 
         _overlay = new OverlayWindow();
         if (Settings.OverlayVisible) _overlay.ShowAnimated();
@@ -184,6 +199,11 @@ public partial class App : Application
         ThemeService.Apply(Settings);
         Sensors.IntervalMs = Settings.PollIntervalMs;
         Hotkey.SetCombo(Settings.Hotkey);
+        if (app._autoUpdates != Settings.AutoCheckUpdates)
+        {
+            app._autoUpdates = Settings.AutoCheckUpdates;
+            Updates.SetAutomatic(Settings.AutoCheckUpdates);
+        }
         app._overlay?.ApplySettings();
         app.UpdateOverlayVisibility();
         app.SyncTrayMenu();
@@ -255,9 +275,11 @@ public partial class App : Application
             _trayC = Unit("Celsius (°C)", TempUnit.Celsius); _trayF = Unit("Fahrenheit (°F)", TempUnit.Fahrenheit);
 
             var exit = new NativeMenuItem("Exit"); exit.Click += (_, _) => ExitApp();
+            _trayUpdate = new NativeMenuItem("Download update") { IsVisible = false };
+            _trayUpdate.Click += (_, _) => Desktop.OpenUrl(Updates.Latest?.PageUrl ?? UpdateChecker.ReleasesPage);
             menu.Add(open); menu.Add(new NativeMenuItemSeparator());
             menu.Add(_trayOverlay); menu.Add(_trayLock); menu.Add(style); menu.Add(units);
-            menu.Add(new NativeMenuItemSeparator()); menu.Add(exit);
+            menu.Add(new NativeMenuItemSeparator()); menu.Add(_trayUpdate); menu.Add(exit);
 
             _tray = new TrayIcon { Icon = _appIcon, ToolTipText = "Ember", Menu = menu, IsVisible = true };
             _tray.Clicked += (_, _) => ShowMain();
@@ -281,6 +303,10 @@ public partial class App : Application
         _trayRings!.IsChecked = s.OverlayLayout == OverlayLayout.Rings;
         _trayC!.IsChecked = s.Unit == TempUnit.Celsius;
         _trayF!.IsChecked = s.Unit == TempUnit.Fahrenheit;
+        bool update = Updates.IsAvailable;
+        if (_trayUpdate!.IsVisible != update) _trayUpdate.IsVisible = update;
+        if (update && _trayUpdate.Header != $"Download Ember {Updates.Latest!.VersionText}…")
+            _trayUpdate.Header = $"Download Ember {Updates.Latest!.VersionText}…";
     }
 
     private void UpdateTray(SensorSnapshot snap)

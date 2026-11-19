@@ -84,6 +84,13 @@ public sealed class AppSettings
     public double TintOpacity { get; set; } = 0.55;
     public double UiScale { get; set; } = 1.0;
 
+    // ---- Updates ----
+    public bool AutoCheckUpdates { get; set; } = true;
+    /// <summary>Version already announced with a notification (announce each version once).</summary>
+    public string? NotifiedUpdateVersion { get; set; }
+    /// <summary>Version whose sidebar banner was dismissed with "Later".</summary>
+    public string? DismissedUpdateVersion { get; set; }
+
     // ---- Window ----
     public double MainWidth { get; set; } = 1180;
     public double MainHeight { get; set; } = 760;

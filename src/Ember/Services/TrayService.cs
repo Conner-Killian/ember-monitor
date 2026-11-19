@@ -19,8 +19,10 @@ public sealed class TrayService : IDisposable
 
     private readonly ToolStripMenuItem _overlayItem, _lockItem, _unitC, _unitF;
     private readonly ToolStripMenuItem _pill, _card, _rings;
+    private readonly ToolStripMenuItem _updateItem;
+    private readonly ToolStripSeparator _updateSeparator;
 
-    public event Action? OpenRequested, ToggleOverlay, ToggleLock, ExitRequested;
+    public event Action? OpenRequested, ToggleOverlay, ToggleLock, ExitRequested, UpdateRequested;
     public event Action<OverlayLayout>? LayoutRequested;
     public event Action<TempUnit>? UnitRequested;
 
@@ -55,9 +57,14 @@ public sealed class TrayService : IDisposable
         var exit = new ToolStripMenuItem("Exit");
         exit.Click += (_, _) => ExitRequested?.Invoke();
 
+        _updateItem = new ToolStripMenuItem("Update Ember") { Visible = false };
+        _updateItem.Click += (_, _) => UpdateRequested?.Invoke();
+        _updateSeparator = new ToolStripSeparator { Visible = false };
+
         menu.Items.AddRange(new ToolStripItem[]
         {
-            open, new ToolStripSeparator(), _overlayItem, _lockItem, layout, unit, new ToolStripSeparator(), exit
+            open, new ToolStripSeparator(), _overlayItem, _lockItem, layout, unit, new ToolStripSeparator(),
+            _updateItem, _updateSeparator, exit
         });
         menu.Opening += (_, _) => Sync();
 
@@ -69,6 +76,14 @@ public sealed class TrayService : IDisposable
             ContextMenuStrip = menu,
         };
         _icon.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) OpenRequested?.Invoke(); };
+        _icon.BalloonTipClicked += (_, _) => OpenRequested?.Invoke();
+    }
+
+    /// <summary>Shows "Update to x.y.z" in the menu, or hides it (null).</summary>
+    public void SetUpdate(string? version)
+    {
+        _updateItem.Visible = _updateSeparator.Visible = version != null;
+        if (version != null) _updateItem.Text = $"Update to Ember {version}";
     }
 
     private static void StyleDropDown(ToolStripMenuItem item)
@@ -90,10 +105,11 @@ public sealed class TrayService : IDisposable
         _unitF.Checked = s.Unit == TempUnit.Fahrenheit;
     }
 
-    public void ShowBalloon(string title, string text)
+    public void ShowBalloon(string title, string text, bool warning = true)
     {
-        _icon.BalloonTipIcon = ToolTipIcon.Warning;
-        _icon.ShowBalloonTip(5000, title, text, ToolTipIcon.Warning);
+        var icon = warning ? ToolTipIcon.Warning : ToolTipIcon.Info;
+        _icon.BalloonTipIcon = icon;
+        _icon.ShowBalloonTip(5000, title, text, icon);
     }
 
     public void Update(SensorSnapshot snap)

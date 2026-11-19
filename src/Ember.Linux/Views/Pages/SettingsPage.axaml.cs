@@ -42,9 +42,24 @@ public partial class SettingsPage : UserControl
         hex.LostFocus += (_, _) => AccentHex_Commit();
         hex.KeyDown += (_, e) => { if (e.Key == Key.Enter) AccentHex_Commit(); };
         App.SettingsChanged += () => { if (!_loading && IsLoaded) Load(); };
-        Loaded += (_, _) => Load();
+        Loaded += (_, _) => { Load(); App.Updates.Changed += SyncUpdates; };
+        Unloaded += (_, _) => App.Updates.Changed -= SyncUpdates;
         Load();
     }
+
+    private void SyncUpdates()
+    {
+        var u = App.Updates;
+        C<TextBlock>("UpdateTitle").Text = $"Ember {UpdateChecker.Format(UpdateChecker.Current)}";
+        C<TextBlock>("UpdateDesc").Text = u.IsAvailable && !u.IsBusy
+            ? $"Ember {u.Latest!.VersionText} is available. Download it from the release page, or update with your package manager."
+            : u.Describe();
+        C<Button>("CheckUpdatesButton").IsEnabled = !u.IsBusy;
+        C<Button>("DownloadUpdateButton").IsVisible = u.IsAvailable;
+    }
+
+    private void CheckUpdates_Click(object? sender, RoutedEventArgs e) => _ = App.Updates.CheckAsync();
+    private void DownloadUpdate_Click(object? sender, RoutedEventArgs e) => Desktop.OpenUrl(App.Updates.Latest?.PageUrl ?? UpdateChecker.ReleasesPage);
 
     private void Load()
     {
@@ -82,6 +97,8 @@ public partial class SettingsPage : UserControl
         C<TextBox>("AccentHex").Text = s.AccentColor;
         C<Slider>("UiScaleSlider").Value = s.UiScale;
         C<TextBlock>("UiScaleText").Text = $"{s.UiScale * 100:0}%";
+        C<ToggleSwitch>("AutoUpdateToggle").IsChecked = s.AutoCheckUpdates;
+        SyncUpdates();
         BuildHints();
         _loading = false;
     }
@@ -105,6 +122,7 @@ public partial class SettingsPage : UserControl
         s.TrayShowsTemp = C<ToggleSwitch>("TrayTempToggle").IsChecked == true;
         s.AlertsColor = C<ToggleSwitch>("ColorToggle").IsChecked == true;
         s.AlertsNotify = C<ToggleSwitch>("NotifyToggle").IsChecked == true;
+        s.AutoCheckUpdates = C<ToggleSwitch>("AutoUpdateToggle").IsChecked == true;
         Commit();
     }
 

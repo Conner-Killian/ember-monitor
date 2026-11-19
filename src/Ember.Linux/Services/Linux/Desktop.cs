@@ -59,10 +59,16 @@ public static class Desktop
         try { Process.Start(new ProcessStartInfo("xdg-open") { ArgumentList = { path }, UseShellExecute = false }); } catch { }
     }
 
-    /// <summary>Desktop notification through libnotify (notify-send) or, failing that, D-Bus via gdbus.</summary>
-    public static void Notify(string title, string body)
+    /// <summary>Opens a web page in the default browser (https only).</summary>
+    public static void OpenUrl(string url)
     {
-        if (Run("notify-send", "-a", "Ember", "-i", "ember-monitor", "-u", "critical", title, body).code == 0) return;
+        if (url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) OpenFolder(url);
+    }
+
+    /// <summary>Desktop notification through libnotify (notify-send) or, failing that, D-Bus via gdbus.</summary>
+    public static void Notify(string title, string body, bool urgent = true)
+    {
+        if (Run("notify-send", "-a", "Ember", "-i", "ember-monitor", "-u", urgent ? "critical" : "normal", title, body).code == 0) return;
         Run("gdbus", "call", "--session", "--dest", "org.freedesktop.Notifications",
             "--object-path", "/org/freedesktop/Notifications", "--method", "org.freedesktop.Notifications.Notify",
             "Ember", "0", "ember-monitor", title, body, "[]", "{}", "10000");

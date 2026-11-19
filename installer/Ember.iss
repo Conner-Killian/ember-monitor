@@ -3,7 +3,7 @@
 
 #define AppName "Ember"
 #ifndef AppVersion
-  #define AppVersion "1.0.6"
+  #define AppVersion "1.1.0"
 #endif
 #define AppExe "Ember.exe"
 #define PublishDir "..\publish"
@@ -64,6 +64,8 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopico
 ; Registers the scheduled tasks that let Ember start without a UAC prompt.
 Filename: "{app}\{#AppExe}"; Parameters: "--register"; Flags: runhidden waituntilterminated; StatusMsg: "Setting up Ember…"
 Filename: "{app}\{#AppExe}"; Description: "Launch {#AppName}"; Flags: nowait postinstall skipifsilent
+; In-app updates run this installer silently with /RELAUNCH=show or /RELAUNCH=tray: start the new version.
+Filename: "{app}\{#AppExe}"; Parameters: "{code:RelaunchArgs}"; Flags: nowait; Check: RelaunchRequested
 
 [UninstallRun]
 Filename: "{app}\{#AppExe}"; Parameters: "--exit"; Flags: runhidden waituntilterminated skipifdoesntexist; RunOnceId: "ExitEmber"
@@ -108,6 +110,19 @@ begin
       DownloadPage.Hide;
     end;
   end;
+end;
+
+function RelaunchRequested: Boolean;
+begin
+  Result := ExpandConstant('{param:relaunch|}') <> '';
+end;
+
+function RelaunchArgs(Param: String): String;
+begin
+  if CompareText(ExpandConstant('{param:relaunch|}'), 'tray') = 0 then
+    Result := '--tray --updated'
+  else
+    Result := '--updated';
 end;
 
 // Ask a running copy of Ember to quit before files are replaced.

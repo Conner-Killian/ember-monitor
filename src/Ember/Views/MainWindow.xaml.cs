@@ -38,7 +38,8 @@ public partial class MainWindow : Window
         Activated += (_, _) => App.Current.UpdateOverlayVisibility();
         Deactivated += (_, _) => App.Current.UpdateOverlayVisibility();
         App.SettingsChanged += SyncChrome;
-        Closed += (_, _) => App.SettingsChanged -= SyncChrome;
+        App.Updates.Changed += SyncUpdate;
+        Closed += (_, _) => { App.SettingsChanged -= SyncChrome; App.Updates.Changed -= SyncUpdate; };
 
         ShowPage(_dashboard = new DashboardPage());
         SyncChrome();
@@ -58,6 +59,36 @@ public partial class MainWindow : Window
         var s = App.Settings;
         OverlayQuickToggle.IsChecked = s.OverlayVisible;
         HotkeyHint.Text = $"Toggle with {HotkeyService.Describe(s.Hotkey)}";
+        SyncUpdate();
+    }
+
+    // ------------------------------------------------------------------ update banner
+    private void SyncUpdate()
+    {
+        var u = App.Updates;
+        bool failed = u.State == UpdateState.Failed;
+        bool show = u.CanInstall && (u.IsBusy || failed || App.Settings.DismissedUpdateVersion != u.Latest!.VersionText);
+        UpdateCard.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        if (!show) return;
+        var v = u.Latest!.VersionText;
+        UpdateText.Text = u.State switch
+        {
+            UpdateState.Downloading => $"Downloading Ember {v}… {u.Progress * 100:0}%",
+            UpdateState.Installing => "Installing. Ember will close and reopen.",
+            UpdateState.Failed => $"Ember {v} didn't install. {u.Error}",
+            _ => $"Ember {v} is ready. Ember closes and reopens to install it.",
+        };
+        UpdateButton.Content = failed ? "Try again" : "Update";
+        UpdateButton.IsEnabled = !u.IsBusy;
+        LaterButton.Visibility = u.IsBusy ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void Update_Click(object sender, RoutedEventArgs e) => _ = App.Updates.InstallAsync();
+
+    private void Later_Click(object sender, RoutedEventArgs e)
+    {
+        if (App.Updates.Latest is { } l) App.Settings.DismissedUpdateVersion = l.VersionText;
+        App.NotifySettingsChanged();
     }
 
     // ------------------------------------------------------------------ page transitions

@@ -17,6 +17,7 @@ public partial class App : Application
     public static AppSettings Settings { get; private set; } = new();
     public static SensorService Sensors { get; private set; } = null!;
     public static HotkeyService Hotkey { get; private set; } = null!;
+    public static UpdateManager Updates { get; private set; } = new(a => a());
     public static new App Current => (App)Application.Current;
 
     /// <summary>Raised whenever settings change so windows can refresh.</summary>
@@ -120,8 +121,67 @@ public partial class App : Application
     [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool AllowSetForegroundWindow(int pid);
     private const int ASFW_ANY = -1;
 
+    /// <summary>
+    /// Update diagnostics (no UI): <c>--verify-update FILE</c> checks FILE.sig; <c>--update-from URL
+    /// [--dry-run]</c> runs the update flow against a release feed (URL in GitHub's API format;
+    /// http://127.0.0.1 allowed for tests). Results go to update-test.log; the exit code is 0 on success.
+    /// </summary>
+    private static int? RunUpdateTool(string[] args, bool elevated)
+    {
+        int vi = Array.FindIndex(args, a => a.Equals("--verify-update", StringComparison.OrdinalIgnoreCase));
+        int ui = Array.FindIndex(args, a => a.Equals("--update-from", StringComparison.OrdinalIgnoreCase));
+        bool dry = args.Any(a => a.Equals("--dry-run", StringComparison.OrdinalIgnoreCase));
+        if (vi < 0 && ui < 0) return null;
+        if (ui >= 0 && !dry && !elevated) return null; // a real install needs the elevated copy
+        void Log(string m) { try { System.IO.Directory.CreateDirectory(AppSettings.Folder); System.IO.File.AppendAllText(System.IO.Path.Combine(AppSettings.Folder, "update-test.log"), $"{DateTime.Now:HH:mm:ss} {m}\n"); } catch { } }
+        try
+        {
+            if (vi >= 0 && vi + 1 < args.Length)
+            {
+                var file = args[vi + 1];
+                using var fs = System.IO.File.OpenRead(file);
+                bool ok = UpdateSignature.Verify(System.IO.Path.GetFileName(file), UpdateSignature.Hash(fs), System.IO.File.ReadAllText(file + ".sig"));
+                Log($"verify {System.IO.Path.GetFileName(file)}: {(ok ? "VALID" : "INVALID")}");
+                return ok ? 0 : 1;
+            }
+            if (ui + 1 >= args.Length) return 2;
+            var url = args[ui + 1];
+            bool loopback = Uri.TryCreate(url, UriKind.Absolute, out var u) && u.IsLoopback;
+            var info = System.Threading.Tasks.Task.Run(() => UpdateChecker.GetLatestAsync(url)).GetAwaiter().GetResult();
+            Log($"feed {url}: latest {info?.VersionText ?? "none"}, running {UpdateChecker.Format(UpdateChecker.Current)}");
+            if (info == null || info.Version <= UpdateChecker.Current) { Log("no newer version"); return 3; }
+            if (!UpdateInstaller.HasSignedInstaller(info)) { Log("no signed installer in release"); return 4; }
+            if (dry)
+            {
+                using var locked = System.Threading.Tasks.Task.Run(() => UpdateInstaller.DownloadVerifiedAsync(info, null, default, loopback)).GetAwaiter().GetResult();
+                Log($"download verified: {locked.Name}");
+                return 0;
+            }
+            // Start the installer and get out of its way: it replaces this very executable.
+            var t = System.Threading.Tasks.Task.Run(() => UpdateInstaller.InstallAsync(info, false, null, default, loopback));
+            var started = System.Diagnostics.Stopwatch.StartNew();
+            while (!t.IsCompleted && started.Elapsed < TimeSpan.FromMinutes(5) &&
+                   !System.Diagnostics.Process.GetProcesses().Any(p => p.ProcessName.StartsWith(System.IO.Path.GetFileNameWithoutExtension(UpdateInstaller.InstallerName(info.Version)), StringComparison.OrdinalIgnoreCase)))
+                Thread.Sleep(100);
+            if (t.IsFaulted) { Log("install failed: " + t.Exception!.GetBaseException().Message); return 5; }
+            Log("installer started");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Log("failed: " + ex.GetBaseException().Message);
+            return 1;
+        }
+    }
+
     protected override void OnStartup(StartupEventArgs e)
     {
+        if (RunUpdateTool(e.Args, StartupService.IsElevated()) is int toolExit)
+        {
+            Shutdown(toolExit);
+            return;
+        }
+
         // ---- started without admin rights (Start menu, Raycast, shortcut…) ----
         // Hand off to the elevated copy through the pre-approved launch task: no UAC prompt. That copy
         // either starts Ember or, if it's already running, just brings the dashboard to the front.
@@ -248,6 +308,27 @@ public partial class App : Application
         _tray.UnitRequested += u => { Settings.Unit = u; NotifySettingsChanged(); };
         _tray.ExitRequested += ExitApp;
         _alerts.Notify += (t, m) => _tray?.ShowBalloon(t, m);
+        _tray.UpdateRequested += () => _ = Updates.InstallAsync();
+
+        Updates = new UpdateManager(a => Dispatcher.BeginInvoke(a))
+        {
+            Installer = (info, progress, ct) => UpdateInstaller.InstallAsync(info, MainVisible, progress, ct),
+            CanInstallRelease = UpdateInstaller.HasSignedInstaller,
+        };
+        Updates.Changed += () => _tray?.SetUpdate(Updates.CanInstall && !Updates.IsBusy ? Updates.Latest!.VersionText : null);
+        Updates.Found += info =>
+        {
+            if (Settings.NotifiedUpdateVersion == info.VersionText) return;
+            Settings.NotifiedUpdateVersion = info.VersionText;
+            Settings.Save();
+            _tray?.ShowBalloon("Ember update available",
+                $"Ember {info.VersionText} is ready to install. Open Ember, or right-click the tray icon to update.", warning: false);
+        };
+        _autoUpdates = Settings.AutoCheckUpdates;
+        if (!diagnostics) Updates.SetAutomatic(Settings.AutoCheckUpdates);
+        System.Threading.Tasks.Task.Run(UpdateInstaller.CleanUp);
+        if (e.Args.Any(a => a.Equals("--updated", StringComparison.OrdinalIgnoreCase)))
+            _tray.ShowBalloon("Ember updated", $"You're now running Ember {UpdateChecker.Format(UpdateChecker.Current)}.", warning: false);
 
         _overlay = new OverlayWindow();
         if (Settings.OverlayVisible) _overlay.ShowAnimated();
@@ -337,6 +418,11 @@ public partial class App : Application
         ThemeService.Apply(Settings);
         Sensors.IntervalMs = Settings.PollIntervalMs;
         Hotkey.SetCombo(Settings.Hotkey);
+        if (app._autoUpdates != Settings.AutoCheckUpdates)
+        {
+            app._autoUpdates = Settings.AutoCheckUpdates;
+            Updates.SetAutomatic(Settings.AutoCheckUpdates);
+        }
         app._overlay?.ApplySettings();
         app.UpdateOverlayVisibility();
         SettingsChanged?.Invoke();
@@ -352,6 +438,7 @@ public partial class App : Application
     }
 
     private bool _exiting, _started;
+    private bool? _autoUpdates;
 
     public void ExitApp()
     {

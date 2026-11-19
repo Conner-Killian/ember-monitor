@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Release signing tool. Holds no keys: the private key lives outside the repository
+       (default: %USERPROFILE%\.ember-signing\update-signing-key.pem). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Same message format and verification code the app uses. -->
+    <Compile Include="..\..\src\Ember\Services\UpdateSignature.cs" Link="UpdateSignature.cs" />
+  </ItemGroup>
+</Project>

@@ -24,6 +24,9 @@
 - **Alerts**: readings change colour at configurable thresholds, with optional desktop notifications
   when a component stays hot.
 - **Tray icon**: can show the CPU temperature directly in the notification area.
+- **Updates**: checks GitHub for new releases. On Windows, updates install in-app with one click and
+  only if the installer is signed with Ember's release key. On Linux, Ember tells you when a new
+  version is out.
 - Celsius or Fahrenheit, multi-monitor support, start on sign-in, dark theme with a configurable accent colour.
 
 Usage figures (CPU, GPU, RAM) are calculated the same way as Windows Task Manager, so the two agree.
@@ -86,6 +89,7 @@ above all other windows, so the overlay cannot appear there.
 | `--tray` | Starts in the background without opening the main window. |
 | `--profile <file>` | Measures Ember's own CPU usage (Windows). |
 | `--register` / `--cleanup` | Creates / removes the startup tasks. Used by the installer (Windows, elevated). |
+| `--update-from <url> [--dry-run]` | Runs the update flow against a release feed in GitHub's API format, for testing (Windows). |
 
 Settings and the error log are stored in `%APPDATA%\Ember` on Windows and `~/.config/Ember` on Linux.
 
@@ -120,6 +124,22 @@ Output is written to `dist/linux/`: `.deb`, `.rpm`, Arch package, AppImage, tarb
 `SHA256SUMS`. Package metadata is taken from the `HOMEPAGE`, `MAINTAINER` and `LICENSE` environment
 variables.
 
+### Releasing
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\release.ps1 -Notes release-notes.md
+```
+
+This builds the Windows installer and Linux packages, signs `Ember-Setup-<version>.exe` (writing
+`Ember-Setup-<version>.exe.sig`), writes `SHA256SUMS` and publishes the GitHub release. Installed
+copies of Ember only install updates whose signature matches a public key in
+`src/Ember/Services/UpdateSignature.cs`.
+
+The private signing key is created once with `dotnet run --project tools/EmberSign -- keygen` and is
+stored outside the repository, in `%USERPROFILE%\.ember-signing\`. Keep a backup of it somewhere safe.
+If it's lost, existing installs can't verify new updates, and users have to install the next version
+manually.
+
 ## Project structure
 
 ```
@@ -131,7 +151,7 @@ src/Ember/            Windows app (WPF, .NET 8)
 src/Ember.Linux/      Linux app (Avalonia); reads hwmon, /proc, RAPL and NVML
 installer/            Inno Setup script
 packaging/linux/      desktop entry, AppStream metadata, icons, nfpm config, PKGBUILD template
-tools/                build scripts and icon generator
+tools/                build and release scripts, EmberSign (update signing), icon generator
 ```
 
 ## Acknowledgements
