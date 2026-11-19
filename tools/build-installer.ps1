@@ -1,6 +1,6 @@
 # Publishes Ember (self-contained, no .NET install needed) and builds the installer.
 #   powershell -ExecutionPolicy Bypass -File tools\build-installer.ps1 [-Version 1.0.0]
-param([string]$Version = "1.1.0")
+param([string]$Version = "1.2.0")
 $ErrorActionPreference = 'Stop'
 $root = Resolve-Path "$PSScriptRoot\.."
 $publish = Join-Path $root "publish"

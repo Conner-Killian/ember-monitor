@@ -14,6 +14,7 @@ using Ember.Controls;
 using Ember.Models;
 using Ember.Services;
 using Ember.Services.Linux;
+using Ember.ViewModels;
 
 namespace Ember.Views.Pages;
 
@@ -58,8 +59,47 @@ public partial class SettingsPage : UserControl
         C<Button>("DownloadUpdateButton").IsVisible = u.IsAvailable;
     }
 
+    private void SyncLog()
+    {
+        var s = App.Settings;
+        C<TextBlock>("LogSizeText").Text = $"Older entries are overwritten. The log file uses {LogViewModel.SizeText(TemperatureLog.FileBytesForDays(s.LogRetentionDays))} on disk.";
+        var file = new System.IO.FileInfo(TemperatureLog.DefaultPath);
+        C<TextBlock>("LogFileText").Text = file.Exists
+            ? $"Removes everything recorded so far ({LogViewModel.SizeText(file.Length)}).{(s.LogEnabled ? " Logging carries on into a new, empty log." : "")}"
+            : "Nothing has been recorded.";
+        C<Button>("DeleteLogButton").IsEnabled = file.Exists;
+    }
+
+    private async void LogDays_Changed(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || C<ComboBox>("LogDaysCombo").SelectedItem is not ComboBoxItem { Tag: string tag }) return;
+        var s = App.Settings;
+        int days = int.Parse(tag);
+        if (days == s.LogRetentionDays) return;
+        // Shrinking drops the oldest entries right away: ask first if there's a log.
+        if (days < s.LogRetentionDays && System.IO.File.Exists(TemperatureLog.DefaultPath) &&
+            !await ConfirmDialog.Ask(TopLevel.GetTopLevel(this) as Window, "Shorten the log",
+                $"Keep the log for {LogViewModel.DaysText(days)} instead of {LogViewModel.DaysText(s.LogRetentionDays)}? Entries older than {LogViewModel.DaysText(days)} are removed now.", "Shorten"))
+        {
+            Load(); // put the selection back
+            return;
+        }
+        s.LogRetentionDays = days;
+        Commit();
+    }
+
+    private async void DeleteLog_Click(object? sender, RoutedEventArgs e)
+    {
+        if (!await ConfirmDialog.Ask(TopLevel.GetTopLevel(this) as Window, "Delete log",
+                "Delete the temperature log? Everything recorded so far is removed. This can't be undone.", "Delete")) return;
+        App.DeleteLog();
+        SyncLog();
+    }
+
     private void CheckUpdates_Click(object? sender, RoutedEventArgs e) => _ = App.Updates.CheckAsync();
     private void DownloadUpdate_Click(object? sender, RoutedEventArgs e) => Desktop.OpenUrl(App.Updates.Latest?.PageUrl ?? UpdateChecker.ReleasesPage);
+    private void Changelog_Click(object? sender, RoutedEventArgs e) => Desktop.OpenUrl(UpdateChecker.ReleasesPage);
+    private void GitHub_Click(object? sender, RoutedEventArgs e) => Desktop.OpenUrl(UpdateChecker.RepoPage);
 
     private void Load()
     {
@@ -99,6 +139,11 @@ public partial class SettingsPage : UserControl
         C<TextBlock>("UiScaleText").Text = $"{s.UiScale * 100:0}%";
         C<ToggleSwitch>("AutoUpdateToggle").IsChecked = s.AutoCheckUpdates;
         SyncUpdates();
+        C<ToggleSwitch>("LogToggle").IsChecked = s.LogEnabled;
+        var ldc = C<ComboBox>("LogDaysCombo");
+        SelectByTag(ldc, s.LogRetentionDays.ToString());
+        if (ldc.SelectedItem is not ComboBoxItem { Tag: string t } || t != s.LogRetentionDays.ToString()) ldc.SelectedIndex = 2;
+        SyncLog();
         BuildHints();
         _loading = false;
     }
@@ -123,6 +168,7 @@ public partial class SettingsPage : UserControl
         s.AlertsColor = C<ToggleSwitch>("ColorToggle").IsChecked == true;
         s.AlertsNotify = C<ToggleSwitch>("NotifyToggle").IsChecked == true;
         s.AutoCheckUpdates = C<ToggleSwitch>("AutoUpdateToggle").IsChecked == true;
+        s.LogEnabled = C<ToggleSwitch>("LogToggle").IsChecked == true;
         Commit();
     }
 

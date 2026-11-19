@@ -19,6 +19,7 @@ public partial class MainWindow : Window
     private SensorsPage? _sensors;
     private OverlayPage? _overlay;
     private SettingsPage? _settings;
+    private LogPage? _log;
     private bool _forceClose;
     private readonly TransitioningContentControl _host;
     private readonly Grid _root;
@@ -105,6 +106,7 @@ public partial class MainWindow : Window
         if (sender is not RadioButton { IsChecked: true } rb || _host == null) return;
         if (rb.Name == "NavDashboard") ShowPage(_dashboard ??= new DashboardPage());
         else if (rb.Name == "NavSensors") ShowPage(_sensors ??= new SensorsPage());
+        else if (rb.Name == "NavLog") ShowPage(_log ??= new LogPage());
         else if (rb.Name == "NavOverlay") ShowPage(_overlay ??= new OverlayPage());
         else if (rb.Name == "NavSettings") ShowPage(_settings ??= new SettingsPage());
     }

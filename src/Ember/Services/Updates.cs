@@ -23,7 +23,8 @@ public static class UpdateChecker
 {
     public const string Repo = "Conner-Killian/ember-monitor";
     public const string LatestApi = "https://api.github.com/repos/" + Repo + "/releases/latest";
-    public const string ReleasesPage = "https://github.com/" + Repo + "/releases";
+    public const string RepoPage = "https://github.com/" + Repo;
+    public const string ReleasesPage = RepoPage + "/releases";
 
     public static readonly Version Current = Normalize(Assembly.GetEntryAssembly()?.GetName().Version ?? new Version(0, 0, 0));
 

@@ -54,12 +54,36 @@ public static class SnapshotTool
 
         // Pages
         main.Width = 1280; main.Height = 900;
-        foreach (var nav in new[] { "NavDashboard", "NavSensors", "NavOverlay", "NavSettings" })
+        foreach (var nav in new[] { "NavDashboard", "NavSensors", "NavLog", "NavOverlay", "NavSettings" })
         {
             main.Navigate(nav);
             main.UpdateSnapshot(snap);
             await Task.Delay(1200);
             Render(main, Path.Combine(dir, $"main_{nav[3..].ToLowerInvariant()}.png"));
+            if (nav == "NavLog" && main.FindControl<TransitioningContentControl>("PageHost")?.Content is Views.Pages.LogPage lp &&
+                lp.FindControl<ScrollViewer>("Scroller") is { } ls)
+            {
+                ls.ScrollToEnd();
+                await Task.Delay(500);
+                Render(main, Path.Combine(dir, "main_log_end.png"));
+                ls.ScrollToHome();
+                int savedView = App.Settings.LogViewDays;
+                foreach (var d in LogViewModel.ViewOptions(App.Settings.LogRetentionDays))
+                {
+                    lp.SetRange(d);
+                    await Task.Delay(900);
+                    Render(main, Path.Combine(dir, $"main_log_{d}d.png"));
+                }
+                lp.SetRange(savedView);
+            }
+            if (nav == "NavSettings" && main.FindControl<TransitioningContentControl>("PageHost")?.Content is Views.Pages.SettingsPage sp &&
+                sp.FindControl<ScrollViewer>("Scroller") is { } ss)
+            {
+                ss.Offset = new Avalonia.Vector(0, 1250);
+                await Task.Delay(500);
+                Render(main, Path.Combine(dir, "main_settings_log.png"));
+                ss.Offset = default;
+            }
         }
         main.Navigate("NavDashboard");
 

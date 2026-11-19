@@ -84,6 +84,17 @@ public sealed class AppSettings
     public double TintOpacity { get; set; } = 0.55;
     public double UiScale { get; set; } = 1.0;
 
+    // ---- All sensors page ----
+    public bool SensorsTemperaturesOnly { get; set; }
+
+    // ---- Temperature log ----
+    /// <summary>Record temperatures to a fixed-size log on disk (off by default).</summary>
+    public bool LogEnabled { get; set; }
+    /// <summary>How many days the log keeps; older data is overwritten, so the file never grows.</summary>
+    public int LogRetentionDays { get; set; } = 7;
+    /// <summary>How many days the Log page's charts show (limited to <see cref="LogRetentionDays"/>).</summary>
+    public int LogViewDays { get; set; } = 7;
+
     // ---- Updates ----
     public bool AutoCheckUpdates { get; set; } = true;
     /// <summary>Version already announced with a notification (announce each version once).</summary>
@@ -159,6 +170,8 @@ public sealed class AppSettings
         if (!double.IsFinite(MainWidth) || MainWidth < 980) MainWidth = 1180;
         if (!double.IsFinite(MainHeight) || MainHeight < 620) MainHeight = 760;
         AlertSustainSeconds = Math.Clamp(AlertSustainSeconds, 0, 600);
+        LogRetentionDays = Math.Clamp(LogRetentionDays, 1, 365);
+        LogViewDays = Math.Clamp(LogViewDays, 1, 365);
         Hotkey ??= new();
         Drives ??= new();
         CpuThresholds ??= new(80, 90);

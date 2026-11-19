@@ -18,6 +18,12 @@ public partial class App : Application
     public static SensorService Sensors { get; private set; } = null!;
     public static HotkeyService Hotkey { get; private set; } = null!;
     public static UpdateManager Updates { get; private set; } = new(a => a());
+    /// <summary>The temperature log while logging is on (null when off).</summary>
+    public static TemperatureLog? Log { get; private set; }
+    /// <summary>Raised when the log is opened, closed, resized or deleted.</summary>
+    public static event Action? LogChanged;
+    private DispatcherTimer? _logTimer;
+    private (bool on, int days) _logState = (false, 0);
     public static new App Current => (App)Application.Current;
 
     /// <summary>Raised whenever settings change so windows can refresh.</summary>
@@ -182,10 +188,15 @@ public partial class App : Application
             return;
         }
 
+        // `--snapshot DIR --no-elevate` (tests): runs as a separate copy without admin rights, next to
+        // a running Ember. CPU / motherboard sensors are missing then; everything else works.
+        bool noElevate = e.Args.Any(a => a.Equals("--no-elevate", StringComparison.OrdinalIgnoreCase)) &&
+                         e.Args.Any(a => a.Equals("--snapshot", StringComparison.OrdinalIgnoreCase));
+
         // ---- started without admin rights (Start menu, Raycast, shortcut…) ----
         // Hand off to the elevated copy through the pre-approved launch task: no UAC prompt. That copy
         // either starts Ember or, if it's already running, just brings the dashboard to the front.
-        if (!StartupService.IsElevated())
+        if (!StartupService.IsElevated() && !noElevate)
         {
             AllowSetForegroundWindow(ASFW_ANY); // let the elevated copy take focus
             bool plainLaunch = e.Args.All(a => a.Equals("--show", StringComparison.OrdinalIgnoreCase));
@@ -235,6 +246,7 @@ public partial class App : Application
         }
 
         // ---- single instance ----
+        if (noElevate) { RunApp(e); return; }
         _mutex = new Mutex(true, MutexName, out bool created);
         if (!created && e.Args.Contains("--restart"))
         {
@@ -264,7 +276,11 @@ public partial class App : Application
         {
             if (_exitEvent.WaitOne()) Dispatcher.BeginInvoke(ExitApp);
         }) { IsBackground = true }.Start();
+        RunApp(e);
+    }
 
+    private void RunApp(StartupEventArgs e)
+    {
         DispatcherUnhandledException += (_, ex) =>
         {
             ex.Handled = true;
@@ -285,14 +301,16 @@ public partial class App : Application
                                            a.Equals("--profile", StringComparison.OrdinalIgnoreCase));
         bool startWithWindows = Settings.StartWithWindows && !diagnostics;
         if (!diagnostics && !Settings.FirstRunDone) { Settings.FirstRunDone = true; Settings.Save(); }
-        System.Threading.Tasks.Task.Run(() =>
-        {
-            StartupService.EnsureLaunchTask();
-            if (startWithWindows) StartupService.Set(true);
-        });
+        if (!diagnostics)
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                StartupService.EnsureLaunchTask();
+                if (startWithWindows) StartupService.Set(true);
+            });
 
         Sensors = new SensorService(Dispatcher) { IntervalMs = Settings.PollIntervalMs };
-        Sensors.Updated += OnSnapshot;
+        Sensors.Updated += snap => { Log?.Add(snap, DateTime.UtcNow); OnSnapshot(snap); }; // each new reading logged once
+        ApplyLogSettings();
         Sensors.Status += msg => { LogError(msg); _overlay?.ApplySettings(); };
 
         Hotkey = new HotkeyService();
@@ -366,6 +384,62 @@ public partial class App : Application
         }
     }
 
+    // ------------------------------------------------------------------ temperature log
+    // Readings are reduced to one row a minute in memory and written every 10 minutes (and on exit)
+    // into a fixed-size file. See TemperatureLog for the details.
+
+    private void ApplyLogSettings()
+    {
+        var want = (Settings.LogEnabled, Settings.LogRetentionDays);
+        if (want == _logState && (Log != null) == want.LogEnabled) return;
+        _logState = want;
+        try
+        {
+            if (want.LogEnabled)
+            {
+                int rows = TemperatureLog.RowsForDays(want.LogRetentionDays);
+                if (Log == null) Log = TemperatureLog.Open(TemperatureLog.DefaultPath, rows);
+                else if (Log.Capacity != rows) { FlushLog(final: true); Log.Resize(rows); }
+                _logTimer ??= new DispatcherTimer(TimeSpan.FromMinutes(10), DispatcherPriority.Background, (_, _) => FlushLog(final: false), Dispatcher);
+                _logTimer.Start();
+            }
+            else CloseLog();
+        }
+        catch (Exception ex)
+        {
+            LogError("Temperature log: " + ex.Message);
+            CloseLog();
+        }
+        LogChanged?.Invoke();
+    }
+
+    private static void FlushLog(bool final)
+    {
+        try { Log?.Flush(DateTime.UtcNow, final); }
+        catch (Exception ex) { LogError("Temperature log: " + ex.Message); }
+    }
+
+    private void CloseLog()
+    {
+        _logTimer?.Stop();
+        if (Log == null) return;
+        FlushLog(final: true);
+        Log.Dispose();
+        Log = null;
+    }
+
+    /// <summary>Deletes the log file (Settings → Delete log). Logging continues into a fresh file if it's on.</summary>
+    public static void DeleteLog()
+    {
+        var app = Current;
+        app.CloseLog();
+        try { System.IO.File.Delete(TemperatureLog.DefaultPath); }
+        catch (Exception ex) { LogError("Deleting the temperature log: " + ex.Message); }
+        app._logState = (false, 0);
+        app.ApplyLogSettings();
+        LogChanged?.Invoke();
+    }
+
     private void OnSnapshot(SensorSnapshot snap)
     {
         _overlay?.UpdateSnapshot(snap);
@@ -418,6 +492,7 @@ public partial class App : Application
         ThemeService.Apply(Settings);
         Sensors.IntervalMs = Settings.PollIntervalMs;
         Hotkey.SetCombo(Settings.Hotkey);
+        app.ApplyLogSettings();
         if (app._autoUpdates != Settings.AutoCheckUpdates)
         {
             app._autoUpdates = Settings.AutoCheckUpdates;
@@ -445,6 +520,7 @@ public partial class App : Application
         if (_exiting) return;
         _exiting = true;
         Settings.Save();
+        CloseLog();
         _overlay?.Close();
         _main?.ForceClose();
         Shutdown();
@@ -455,6 +531,7 @@ public partial class App : Application
     {
         _exiting = true;
         if (_started) try { Settings.Save(); } catch { }
+        FlushLog(final: true); // shutdown / sign-out: save the last minutes
         base.OnSessionEnding(e);
     }
 
@@ -463,6 +540,7 @@ public partial class App : Application
         // Only the real instance may save: a second launch / `--exit` call never loaded the user's
         // settings, and saving its defaults would wipe them.
         if (_started) try { Settings.Save(); } catch { }
+        CloseLog();
         _tray?.Dispose();
         Hotkey?.Dispose();
         Sensors?.Dispose();

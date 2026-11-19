@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Tests and sample data for the temperature log (src/Ember/Services/TemperatureLog.cs). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\src\Ember\Services\TemperatureLog.cs" Link="TemperatureLog.cs" />
+    <Compile Include="..\..\src\Ember\Services\SensorModels.cs" Link="SensorModels.cs" />
+    <Compile Include="..\..\src\Ember\Models\AppSettings.cs" Link="AppSettings.cs" />
+  </ItemGroup>
+</Project>

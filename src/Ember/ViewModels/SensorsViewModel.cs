@@ -90,9 +90,19 @@ public sealed class SensorsViewModel : Observable
     public ObservableCollection<ISensorListItem> Items { get; } = new();
 
     private string _filter = "";
-    private bool _tempsOnly;
+    private bool _tempsOnly = App.Settings.SensorsTemperaturesOnly; // remembered between visits and restarts
     public string Filter { get => _filter; set { if (Set(ref _filter, value)) Refresh(); } }
-    public bool TempsOnly { get => _tempsOnly; set { if (Set(ref _tempsOnly, value)) Refresh(); } }
+    public bool TempsOnly
+    {
+        get => _tempsOnly;
+        set
+        {
+            if (!Set(ref _tempsOnly, value)) return;
+            App.Settings.SensorsTemperaturesOnly = value;
+            App.Settings.Save();
+            Refresh();
+        }
+    }
 
     private SensorSnapshot? _last;
     private readonly Dictionary<string, SensorGroupVM> _groups = new();

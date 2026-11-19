@@ -80,6 +80,7 @@
                 <StackPanel>
                     <RadioButton x:Name="NavDashboard" Style="{StaticResource NavButton}" Tag="&#xE9D9;" Content="Dashboard" IsChecked="True" Checked="Nav_Checked" />
                     <RadioButton x:Name="NavSensors" Style="{StaticResource NavButton}" Tag="&#xE8FD;" Content="All sensors" Checked="Nav_Checked" />
+                    <RadioButton x:Name="NavLog" Style="{StaticResource NavButton}" Tag="&#xE81C;" Content="Log" Checked="Nav_Checked" />
                     <RadioButton x:Name="NavOverlay" Style="{StaticResource NavButton}" Tag="&#xE7F4;" Content="Overlay" Checked="Nav_Checked" />
                     <RadioButton x:Name="NavSettings" Style="{StaticResource NavButton}" Tag="&#xE713;" Content="Settings" Checked="Nav_Checked" />
                 </StackPanel>

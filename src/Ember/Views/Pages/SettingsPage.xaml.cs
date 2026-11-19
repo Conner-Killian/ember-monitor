@@ -75,6 +75,9 @@ public partial class SettingsPage : UserControl
         DriverButton.Visibility = installed ? Visibility.Collapsed : Visibility.Visible;
         AutoUpdateToggle.IsChecked = s.AutoCheckUpdates;
         SyncUpdates();
+        LogToggle.IsChecked = s.LogEnabled;
+        SelectByTag(LogDaysCombo, s.LogRetentionDays.ToString(), fallback: 2);
+        SyncLog();
         _loading = false;
     }
 
@@ -96,10 +99,13 @@ public partial class SettingsPage : UserControl
     private void CheckUpdates_Click(object sender, RoutedEventArgs e) => _ = App.Updates.CheckAsync();
     private void InstallUpdate_Click(object sender, RoutedEventArgs e) => _ = App.Updates.InstallAsync();
 
-    private void ReleaseNotes_Click(object sender, RoutedEventArgs e)
+    private void ReleaseNotes_Click(object sender, RoutedEventArgs e) => OpenUrl(App.Updates.Latest?.PageUrl ?? UpdateChecker.ReleasesPage);
+    private void Changelog_Click(object sender, RoutedEventArgs e) => OpenUrl(UpdateChecker.ReleasesPage);
+    private void GitHub_Click(object sender, RoutedEventArgs e) => OpenUrl(UpdateChecker.RepoPage);
+
+    private static void OpenUrl(string url)
     {
         // Ember runs as administrator: open the browser through Explorer so it runs as the normal user.
-        var url = App.Updates.Latest?.PageUrl ?? UpdateChecker.ReleasesPage;
         if (url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             Process.Start(new ProcessStartInfo("explorer.exe", $"\"{url}\"") { UseShellExecute = true });
     }
@@ -117,11 +123,31 @@ public partial class SettingsPage : UserControl
         HddWarn.Text = F(s.HddThresholds.Warn); HddCrit.Text = F(s.HddThresholds.Critical);
     }
 
-    private static void SelectByTag(ComboBox cb, string tag)
+    private static void SelectByTag(ComboBox cb, string tag, int fallback = 1)
     {
         foreach (ComboBoxItem it in cb.Items)
             if ((string)it.Tag == tag) { cb.SelectedItem = it; return; }
-        cb.SelectedIndex = 1;
+        cb.SelectedIndex = fallback;
+    }
+
+    private void SyncLog()
+    {
+        var s = App.Settings;
+        LogSizeText.Text = $"Older entries are overwritten. The log file uses {ViewModels.LogViewModel.SizeText(TemperatureLog.FileBytesForDays(s.LogRetentionDays))} on disk.";
+        var file = new System.IO.FileInfo(TemperatureLog.DefaultPath);
+        LogFileText.Text = file.Exists
+            ? $"Removes everything recorded so far ({ViewModels.LogViewModel.SizeText(file.Length)}).{(s.LogEnabled ? " Logging carries on into a new, empty log." : "")}"
+            : "Nothing has been recorded.";
+        DeleteLogButton.IsEnabled = file.Exists;
+    }
+
+    private void DeleteLog_Click(object sender, RoutedEventArgs e)
+    {
+        var ok = MessageBox.Show(Window.GetWindow(this)!, "Delete the temperature log? Everything recorded so far is removed. This can't be undone.",
+            "Delete log", MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
+        if (ok != MessageBoxResult.OK) return;
+        App.DeleteLog();
+        SyncLog();
     }
 
     private void Changed(object sender, RoutedEventArgs e)
@@ -137,6 +163,21 @@ public partial class SettingsPage : UserControl
         s.AlertsColor = ColorToggle.IsChecked == true;
         s.AlertsNotify = NotifyToggle.IsChecked == true;
         s.AutoCheckUpdates = AutoUpdateToggle.IsChecked == true;
+        s.LogEnabled = LogToggle.IsChecked == true;
+        if (LogDaysCombo.SelectedItem is ComboBoxItem ld)
+        {
+            int days = int.Parse((string)ld.Tag);
+            // Shrinking drops the oldest entries right away: ask first if there's a log.
+            if (days < s.LogRetentionDays && System.IO.File.Exists(TemperatureLog.DefaultPath) &&
+                MessageBox.Show(Window.GetWindow(this)!,
+                    $"Keep the log for {ViewModels.LogViewModel.DaysText(days)} instead of {ViewModels.LogViewModel.DaysText(s.LogRetentionDays)}? Entries older than {ViewModels.LogViewModel.DaysText(days)} are removed now.",
+                    "Shorten the log", MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel) != MessageBoxResult.OK)
+            {
+                Load(); // put the selection back
+                return;
+            }
+            s.LogRetentionDays = days;
+        }
         s.Backdrop = BdAcrylic.IsChecked == true ? Backdrop.Acrylic : BdSolid.IsChecked == true ? Backdrop.Solid : Backdrop.Mica;
         Commit();
     }

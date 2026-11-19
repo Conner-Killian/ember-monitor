@@ -1,0 +1,98 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Ember.Controls"
+             x:Class="Ember.Views.Pages.LogPage">
+    <UserControl.Resources>
+        <DataTemplate x:Key="LogCard">
+            <Border Classes="card" Padding="22,18" Margin="0,0,0,14">
+                <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Top" Margin="0,0,24,0">
+                        <TextBlock Text="{Binding Subtitle}" Classes="overline" />
+                        <TextBlock Text="{Binding Title}" Classes="h2" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                        <Border Background="{DynamicResource SubtleFillBrush}" CornerRadius="9" Padding="12,8">
+                            <StackPanel>
+                                <TextBlock Text="Average" Classes="overline" />
+                                <TextBlock Text="{Binding Average}" FontSize="17" FontWeight="SemiBold" Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Border>
+                        <Border Background="{DynamicResource SubtleFillBrush}" CornerRadius="9" Padding="12,8">
+                            <StackPanel>
+                                <TextBlock Text="Peak" Classes="overline" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="{Binding Peak}" FontSize="17" FontWeight="SemiBold" Margin="0,2,0,0" />
+                                    <TextBlock Text="{Binding PeakWhen}" Classes="caption" VerticalAlignment="Bottom" Margin="0,0,0,3" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                        <Border Background="{DynamicResource SubtleFillBrush}" CornerRadius="9" Padding="12,8">
+                            <StackPanel>
+                                <TextBlock Text="Lowest" Classes="overline" />
+                                <TextBlock Text="{Binding Low}" FontSize="17" FontWeight="SemiBold" Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Border>
+                        <Border Background="{DynamicResource SubtleFillBrush}" CornerRadius="9" Padding="12,8">
+                            <StackPanel>
+                                <TextBlock Text="Above warning" Classes="overline" />
+                                <TextBlock Text="{Binding AboveWarning}" FontSize="17" FontWeight="SemiBold" Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                    <c:LogChart Grid.Row="1" Grid.ColumnSpan="2" Height="170" Margin="0,16,0,0"
+                                Bins="{Binding Bins}" FromMinute="{Binding FromMinute}" ToMinute="{Binding ToMinute}"
+                                Warn="{Binding Warn}" Critical="{Binding Critical}" />
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto" Padding="28,22,28,28">
+        <StackPanel MaxWidth="1180">
+            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,18">
+                <StackPanel>
+                    <TextBlock Text="Log" Classes="h1" />
+                    <TextBlock x:Name="StatusText" Classes="caption" FontSize="13" Margin="0,6,0,0" TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel x:Name="RangeHost" Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Top" Margin="0,8,0,0">
+                    <TextBlock Text="Show the last" Classes="caption" FontSize="13" VerticalAlignment="Center" />
+                    <ComboBox x:Name="RangeCombo" MinWidth="130" SelectionChanged="Range_Changed" />
+                </StackPanel>
+            </Grid>
+
+            <Border x:Name="OffCard" Classes="card" Padding="26,24" IsVisible="False">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <Border Width="44" Height="44" CornerRadius="12" Background="{DynamicResource AccentSoftBrush}" VerticalAlignment="Top" Margin="0,0,18,0">
+                        <c:Icon Kind="history" Width="22" Height="22" Foreground="{DynamicResource AccentLightBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="Temperature logging is off" Classes="h2" />
+                        <TextBlock x:Name="OffText" Classes="caption" FontSize="13" TextWrapping="Wrap" Margin="0,6,0,0" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="18,0,0,0">
+                        <Button Content="Settings" Click="Settings_Click" />
+                        <Button Classes="accent" Content="Turn on logging" Click="TurnOn_Click" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border x:Name="EmptyCard" Classes="card" Padding="26,24" IsVisible="False">
+                <StackPanel>
+                    <TextBlock Text="Collecting temperatures" Classes="h2" />
+                    <TextBlock Classes="caption" FontSize="13" TextWrapping="Wrap" Margin="0,6,0,0"
+                               Text="Ember records one entry a minute. The first one appears here within a minute, and charts fill in as the log grows." />
+                </StackPanel>
+            </Border>
+
+            <ItemsControl x:Name="Cards" ItemTemplate="{StaticResource LogCard}" />
+
+            <Border x:Name="DailyCard" Classes="card" Padding="22,18" Margin="0,4,0,0" IsVisible="False">
+                <StackPanel>
+                    <TextBlock Text="DAILY SUMMARY" Classes="overline" />
+                    <TextBlock Text="Average · peak for each day. Amber marks days that reached the warning threshold." Classes="caption" Margin="0,4,0,12" />
+                    <Grid x:Name="DailyGrid" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

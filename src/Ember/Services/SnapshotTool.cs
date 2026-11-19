@@ -154,7 +154,7 @@ public static class SnapshotTool
         // Longest gap between rendered frames while each page opens for the first time: a freeze
         // shows up as one long gap (60 Hz ≈ 17 ms per frame).
         var ui = new StringBuilder("\nPage switch smoothness (first open, longest frame gap / time in the click handler):\n");
-        foreach (var nav in new[] { "NavDashboard", "NavSensors", "NavOverlay", "NavSettings" })
+        foreach (var nav in new[] { "NavDashboard", "NavSensors", "NavLog", "NavOverlay", "NavSettings" })
         {
             var last = System.Diagnostics.Stopwatch.GetTimestamp();
             double worst = 0;
@@ -175,6 +175,31 @@ public static class SnapshotTool
             CompositionTarget.Rendering -= onFrame;
             ui.AppendLine($"   {nav[3..],-10} {worst,6:0} ms   {clickMs,6:0} ms");
             Render(main, Path.Combine(dir, $"main_{nav[3..].ToLower()}.png"), true);
+            if (nav == "NavLog" && (main.FindName("PageHost") as ContentControl)?.Content is Views.Pages.LogPage lp)
+            {
+                lp.Scroller.ScrollToEnd();
+                await Task.Delay(400);
+                Render(main, Path.Combine(dir, "main_log_end.png"), true);
+                lp.Scroller.ScrollToHome();
+                int savedView = settings.LogViewDays;
+                foreach (var d in ViewModels.LogViewModel.ViewOptions(settings.LogRetentionDays))
+                {
+                    lp.SetRange(d);
+                    await Task.Delay(900);
+                    Render(main, Path.Combine(dir, $"main_log_{d}d.png"), true);
+                }
+                lp.SetRange(savedView);
+            }
+            if (nav == "NavSettings" && (main.FindName("PageHost") as ContentControl)?.Content is Views.Pages.SettingsPage stp)
+            {
+                stp.Scroller.ScrollToVerticalOffset(1250);
+                await Task.Delay(400);
+                Render(main, Path.Combine(dir, "main_settings_log.png"), true);
+                stp.Scroller.ScrollToEnd();
+                await Task.Delay(400);
+                Render(main, Path.Combine(dir, "main_settings_end.png"), true);
+                stp.Scroller.ScrollToHome();
+            }
             if (nav == "NavSensors")
             {
                 int items = (main.FindName("PageHost") as ContentControl)?.Content is Views.Pages.SensorsPage sp && sp.FindName("List") is ItemsControl ic ? ic.Items.Count : -1;

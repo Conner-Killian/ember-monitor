@@ -25,6 +25,11 @@
   power-draw readings. When locked, clicks pass straight through it.
 - **Dashboard**: current, minimum and maximum readings with live graphs for each component.
 - **All sensors**: every sensor the system reports (temperatures, loads, clocks, fans, voltages, power), grouped by device.
+- **Log** (optional, off by default): records CPU, GPU, memory and drive temperatures and shows the
+  last 24 hours or 7 days as charts, with averages, peaks, time spent above the warning threshold and
+  a daily summary. It keeps 7 days by default (adjustable up to a year) in a single fixed-size file
+  (about 0.5 MB for 7 days). The file is written every 10 minutes, so it never grows and causes very
+  little disk wear.
 - **Alerts**: readings change colour at configurable thresholds, with optional desktop notifications
   when a component stays hot.
 - **Tray icon**: can show the CPU temperature directly in the notification area.
@@ -97,7 +102,7 @@ above all other windows, so the overlay cannot appear there.
 
 | Option | Description |
 |---|---|
-| `--snapshot <folder>` | Writes a full sensor report (`sensors.txt`) and screenshots of every page, for bug reports. |
+| `--snapshot <folder>` | Writes a full sensor report (`sensors.txt`) and screenshots of every page, for bug reports. Add `--no-elevate` on Windows to run it without admin rights next to a running Ember. |
 | `--exit` | Closes the running instance. |
 | `--toggle-overlay` | Shows or hides the overlay (Linux; used for desktop keyboard shortcuts). |
 | `--tray` | Starts in the background without opening the main window. |
@@ -165,7 +170,7 @@ src/Ember/            Windows app (WPF, .NET 8)
 src/Ember.Linux/      Linux app (Avalonia); reads hwmon, /proc, RAPL and NVML
 installer/            Inno Setup script
 packaging/linux/      desktop entry, AppStream metadata, icons, nfpm config, PKGBUILD template
-tools/                build and release scripts, EmberSign (update signing), icon generator
+tools/                build and release scripts, EmberSign (update signing), LogTool (log tests), icon generator
 ```
 
 ## Acknowledgements

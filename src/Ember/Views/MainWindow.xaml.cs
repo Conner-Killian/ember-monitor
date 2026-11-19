@@ -15,6 +15,7 @@ public partial class MainWindow : Window
     private SensorsPage? _sensors;
     private OverlayPage? _overlay;
     private SettingsPage? _settings;
+    private LogPage? _log;
     private bool _forceClose, _closeNow;
 
     public MainWindow()
@@ -161,11 +162,13 @@ public partial class MainWindow : Window
         if (!IsInitialized) return;
         if (sender == NavDashboard) ShowPage(_dashboard ??= new DashboardPage());
         else if (sender == NavSensors) ShowPage(_sensors ??= new SensorsPage());
+        else if (sender == NavLog) ShowPage(_log ??= new LogPage());
         else if (sender == NavOverlay) ShowPage(_overlay ??= new OverlayPage());
         else if (sender == NavSettings) ShowPage(_settings ??= new SettingsPage());
     }
 
     public void NavigateToSettings() => NavSettings.IsChecked = true;
+    public void Navigate(string name) { if (FindName(name) is RadioButton rb) rb.IsChecked = true; }
 
     private void OverlayQuickToggle_Click(object sender, RoutedEventArgs e)
     {

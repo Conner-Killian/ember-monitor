@@ -25,6 +25,66 @@ public partial class App : Application
     /// <summary>Checks GitHub for new releases. On Linux updates come from the package manager or a new AppImage, so there's no installer.</summary>
     public static UpdateManager Updates { get; } = new(a => Dispatcher.UIThread.Post(a));
     private bool? _autoUpdates;
+    /// <summary>The temperature log while logging is on (null when off).</summary>
+    public static TemperatureLog? Log { get; private set; }
+    /// <summary>Raised when the log is opened, closed, resized or deleted.</summary>
+    public static event Action? LogChanged;
+    private DispatcherTimer? _logTimer;
+    private (bool on, int days) _logState = (false, 0);
+
+    // Readings are reduced to one row a minute in memory and written every 10 minutes (and on exit)
+    // into a fixed-size file. See TemperatureLog for the details.
+    private void ApplyLogSettings()
+    {
+        var want = (Settings.LogEnabled, Settings.LogRetentionDays);
+        if (want == _logState && (Log != null) == want.LogEnabled) return;
+        _logState = want;
+        try
+        {
+            if (want.LogEnabled)
+            {
+                int rows = TemperatureLog.RowsForDays(want.LogRetentionDays);
+                if (Log == null) Log = TemperatureLog.Open(TemperatureLog.DefaultPath, rows);
+                else if (Log.Capacity != rows) { FlushLog(final: true); Log.Resize(rows); }
+                _logTimer ??= new DispatcherTimer(TimeSpan.FromMinutes(10), DispatcherPriority.Background, (_, _) => FlushLog(final: false));
+                _logTimer.Start();
+            }
+            else CloseLog();
+        }
+        catch (Exception ex)
+        {
+            LogError("Temperature log: " + ex.Message);
+            CloseLog();
+        }
+        LogChanged?.Invoke();
+    }
+
+    private static void FlushLog(bool final)
+    {
+        try { Log?.Flush(DateTime.UtcNow, final); }
+        catch (Exception ex) { LogError("Temperature log: " + ex.Message); }
+    }
+
+    private void CloseLog()
+    {
+        _logTimer?.Stop();
+        if (Log == null) return;
+        FlushLog(final: true);
+        Log.Dispose();
+        Log = null;
+    }
+
+    /// <summary>Deletes the log file (Settings → Delete log). Logging continues into a fresh file if it's on.</summary>
+    public static void DeleteLog()
+    {
+        var app = Current;
+        app.CloseLog();
+        try { File.Delete(TemperatureLog.DefaultPath); }
+        catch (Exception ex) { LogError("Deleting the temperature log: " + ex.Message); }
+        app._logState = (false, 0);
+        app.ApplyLogSettings();
+        LogChanged?.Invoke();
+    }
     public static new App Current => (App)Application.Current!;
 
     /// <summary>Raised whenever settings change so windows can refresh.</summary>
@@ -93,7 +153,8 @@ public partial class App : Application
         else if (!diagnostics && Settings.StartWithWindows) Autostart.Set(true); // keep the path current (AppImage moved, package updated)
 
         Sensors = new SensorService { IntervalMs = Settings.PollIntervalMs };
-        Sensors.Updated += OnSnapshot;
+        Sensors.Updated += snap => { Log?.Add(snap, DateTime.UtcNow); OnSnapshot(snap); }; // each new reading logged once
+        ApplyLogSettings();
         Sensors.Status += msg => { LogError(msg); _overlay?.ApplySettings(); };
 
         Hotkey = new HotkeyService();
@@ -199,6 +260,7 @@ public partial class App : Application
         ThemeService.Apply(Settings);
         Sensors.IntervalMs = Settings.PollIntervalMs;
         Hotkey.SetCombo(Settings.Hotkey);
+        app.ApplyLogSettings();
         if (app._autoUpdates != Settings.AutoCheckUpdates)
         {
             app._autoUpdates = Settings.AutoCheckUpdates;
@@ -224,6 +286,7 @@ public partial class App : Application
         if (_exiting) return;
         _exiting = true;
         Settings.Save();
+        CloseLog();
         _overlay?.Close();
         _main?.ForceClose();
         if (_tray != null) _tray.IsVisible = false;
@@ -233,6 +296,7 @@ public partial class App : Application
     private void OnExit()
     {
         if (_started) try { Settings.Save(); } catch { }
+        CloseLog();
         Hotkey?.Dispose();
         Sensors?.Dispose();
         SingleInstance.Stop();

@@ -42,6 +42,7 @@
                     <StackPanel>
                         <RadioButton x:Name="NavDashboard" Classes="nav" Tag="dashboard" Content="Dashboard" IsChecked="True" IsCheckedChanged="Nav_Changed" />
                         <RadioButton x:Name="NavSensors" Classes="nav" Tag="list" Content="All sensors" IsCheckedChanged="Nav_Changed" />
+                        <RadioButton x:Name="NavLog" Classes="nav" Tag="history" Content="Log" IsCheckedChanged="Nav_Changed" />
                         <RadioButton x:Name="NavOverlay" Classes="nav" Tag="monitor" Content="Overlay" IsCheckedChanged="Nav_Changed" />
                         <RadioButton x:Name="NavSettings" Classes="nav" Tag="gear" Content="Settings" IsCheckedChanged="Nav_Changed" />
                     </StackPanel>

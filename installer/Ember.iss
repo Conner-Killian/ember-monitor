@@ -3,7 +3,7 @@
 
 #define AppName "Ember"
 #ifndef AppVersion
-  #define AppVersion "1.1.0"
+  #define AppVersion "1.2.0"
 #endif
 #define AppExe "Ember.exe"
 #define PublishDir "..\publish"
