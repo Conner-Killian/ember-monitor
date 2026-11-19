@@ -1,0 +1,10 @@
+# Build output
+bin/
+obj/
+out/
+publish/
+dist/
+# Downloaded build tools (nfpm, appimagetool)
+tools/.cache/
+*.user
+.vs/

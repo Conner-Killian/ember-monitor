@@ -1,0 +1,154 @@
+<UserControl x:Class="Ember.Views.Pages.SensorsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:Ember.ViewModels">
+    <UserControl.Resources>
+        <!-- The list is flat (device header, column header, rows…) and virtualized, so only rows on
+             screen get visuals. Each item draws its slice of the device "card": rounded top on the
+             header, side borders on rows, rounded bottom on the last row. -->
+
+        <Style x:Key="GroupHeaderButton" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="Transparent" Padding="18,14"
+                                CornerRadius="{Binding CornerRadius, RelativeSource={RelativeSource AncestorType=Border}}">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="Background" Value="{DynamicResource SubtleFillBrush}" /></Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="bd" Property="Background" Value="{DynamicResource SubtleFillBrush}" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <DataTemplate DataType="{x:Type vm:SensorGroupVM}">
+            <Border x:Name="card" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource CardBorderBrush}"
+                    BorderThickness="1" CornerRadius="12" Margin="0,0,0,10">
+                <Button Style="{StaticResource GroupHeaderButton}" Click="Header_Click">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="34" Height="34" CornerRadius="9" Background="{DynamicResource AccentSoftBrush}" Margin="0,0,14,0">
+                            <TextBlock Text="{Binding Icon}" Style="{StaticResource Icon}" HorizontalAlignment="Center" Foreground="{DynamicResource AccentLightBrush}" />
+                        </Border>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding Kind}" Style="{StaticResource Caption}" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="2" Text="{Binding Summary}" Style="{StaticResource Caption}" VerticalAlignment="Center" Margin="0,0,16,0" />
+                        <TextBlock x:Name="chev" Grid.Column="3" Text="&#xE70D;" FontFamily="{StaticResource IconFont}" FontSize="11"
+                                   VerticalAlignment="Center" Foreground="{DynamicResource SubTextBrush}" RenderTransformOrigin="0.5,0.5" />
+                    </Grid>
+                </Button>
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                    <Setter TargetName="card" Property="BorderThickness" Value="1,1,1,0" />
+                    <Setter TargetName="card" Property="CornerRadius" Value="12,12,0,0" />
+                    <Setter TargetName="card" Property="Margin" Value="0" />
+                    <Setter TargetName="chev" Property="RenderTransform">
+                        <Setter.Value><RotateTransform Angle="180" /></Setter.Value>
+                    </Setter>
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:SensorColumnsVM}">
+            <Border Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1,0,1,0" Padding="18,2,18,6">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="110" />
+                        <ColumnDefinition Width="110" />
+                        <ColumnDefinition Width="110" />
+                        <ColumnDefinition Width="110" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="SENSOR" Style="{StaticResource Overline}" />
+                    <TextBlock Grid.Column="1" Text="TYPE" Style="{StaticResource Overline}" />
+                    <TextBlock Grid.Column="2" Text="CURRENT" Style="{StaticResource Overline}" HorizontalAlignment="Right" />
+                    <TextBlock Grid.Column="3" Text="MIN" Style="{StaticResource Overline}" HorizontalAlignment="Right" />
+                    <TextBlock Grid.Column="4" Text="MAX" Style="{StaticResource Overline}" HorizontalAlignment="Right" />
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:SensorRowVM}">
+            <Border x:Name="card" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource CardBorderBrush}"
+                    BorderThickness="1,0,1,0" Padding="18,0,18,0">
+                <Border BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,0,0" Padding="0,7">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="110" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding Name}" FontSize="13" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="1" Text="{Binding Type}" FontSize="12.5" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Grid.Column="2" Text="{Binding Value}" Foreground="{Binding Brush}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Right" />
+                        <TextBlock Grid.Column="3" Text="{Binding Min}" FontSize="13" Foreground="{DynamicResource SubTextBrush}" HorizontalAlignment="Right" />
+                        <TextBlock Grid.Column="4" Text="{Binding Max}" FontSize="13" Foreground="{DynamicResource SubTextBrush}" HorizontalAlignment="Right" />
+                    </Grid>
+                </Border>
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsLast}" Value="True">
+                    <Setter TargetName="card" Property="BorderThickness" Value="1,0,1,1" />
+                    <Setter TargetName="card" Property="CornerRadius" Value="0,0,12,12" />
+                    <Setter TargetName="card" Property="Padding" Value="18,0,18,14" />
+                    <Setter TargetName="card" Property="Margin" Value="0,0,0,10" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid Margin="28,22,28,0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid Margin="0,0,0,16">
+            <StackPanel>
+                <TextBlock Text="All sensors" Style="{StaticResource H1}" />
+                <TextBlock Text="Every reading your hardware exposes, with session minimum and maximum." Style="{StaticResource Caption}" Margin="0,6,0,0" FontSize="13" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+                <CheckBox Content="Temperatures only" IsChecked="{Binding TempsOnly}" Margin="0,0,18,0" FontSize="13" />
+                <Grid Width="240">
+                    <TextBox x:Name="Search" Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged}" Padding="30,6,9,6" />
+                    <TextBlock Text="&#xE721;" Style="{StaticResource Icon}" FontSize="13" Foreground="{DynamicResource MutedBrush}" Margin="10,0,0,0" IsHitTestVisible="False" />
+                    <TextBlock Text="Filter sensors" Foreground="{DynamicResource MutedBrush}" FontSize="13" Margin="31,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                               x:Name="SearchHint" />
+                </Grid>
+            </StackPanel>
+        </Grid>
+
+        <ItemsControl x:Name="List" Grid.Row="1" ItemsSource="{Binding Items}" Focusable="False"
+                      VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                      VirtualizingPanel.ScrollUnit="Pixel" ScrollViewer.CanContentScroll="True">
+            <ItemsControl.Template>
+                <ControlTemplate TargetType="ItemsControl">
+                    <ScrollViewer Focusable="False" CanContentScroll="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <ItemsPresenter Margin="0,0,0,18" />
+                    </ScrollViewer>
+                </ControlTemplate>
+            </ItemsControl.Template>
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+        </ItemsControl>
+    </Grid>
+</UserControl>

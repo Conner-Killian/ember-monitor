@@ -1,0 +1,17 @@
+[Desktop Entry]
+Type=Application
+Name=Ember
+GenericName=Temperature Monitor
+Comment=CPU, GPU, RAM and drive temperatures with an always-on-top overlay
+Exec=ember-monitor
+Icon=ember-monitor
+Terminal=false
+Categories=System;Monitor;Utility;
+Keywords=temperature;temps;sensors;hardware;cpu;gpu;overlay;fan;
+StartupWMClass=ember-monitor
+StartupNotify=false
+Actions=toggle-overlay;
+
+[Desktop Action toggle-overlay]
+Name=Show / hide overlay
+Exec=ember-monitor --toggle-overlay

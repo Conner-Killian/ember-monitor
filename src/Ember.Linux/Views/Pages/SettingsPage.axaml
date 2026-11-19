@@ -1,0 +1,202 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Ember.Controls"
+             x:Class="Ember.Views.Pages.SettingsPage">
+    <UserControl.Styles>
+        <Style Selector="TextBox.threshold">
+            <Setter Property="Width" Value="76" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,3" />
+        </Style>
+    </UserControl.Styles>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel MaxWidth="980" Margin="28,22,28,28">
+            <TextBlock Text="Settings" Classes="h1" />
+
+            <!-- ===== General ===== -->
+            <TextBlock Text="General" Classes="section" Margin="2,18,0,10" />
+            <Border Classes="row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Temperature unit" Classes="rowTitle" />
+                        <TextBlock Text="Used in the dashboard, overlay, tray and alerts." Classes="rowDesc" />
+                    </StackPanel>
+                    <Border Grid.Column="1" Classes="segHost">
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton x:Name="UnitC" Classes="seg" GroupName="Unit" Content="Celsius  °C" Click="Changed" />
+                            <RadioButton x:Name="UnitF" Classes="seg" GroupName="Unit" Content="Fahrenheit  °F" Click="Changed" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+            <Border Classes="row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Update interval" Classes="rowTitle" />
+                        <TextBlock Text="How often sensors are read. Slower intervals use slightly less CPU." Classes="rowDesc" />
+                    </StackPanel>
+                    <ComboBox x:Name="IntervalCombo" Grid.Column="1" VerticalAlignment="Center" SelectionChanged="Changed">
+                        <ComboBoxItem Content="0.5 seconds" Tag="500" />
+                        <ComboBoxItem Content="1 second" Tag="1000" />
+                        <ComboBoxItem Content="2 seconds" Tag="2000" />
+                        <ComboBoxItem Content="5 seconds" Tag="5000" />
+                    </ComboBox>
+                </Grid>
+            </Border>
+            <Border Classes="row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Primary graphics card" Classes="rowTitle" />
+                        <TextBlock Text="The GPU shown on the overlay and dashboard. Auto picks your dedicated card." Classes="rowDesc" />
+                    </StackPanel>
+                    <ComboBox x:Name="GpuCombo" Grid.Column="1" VerticalAlignment="Center" MinWidth="240" SelectionChanged="Changed" />
+                </Grid>
+            </Border>
+
+            <!-- ===== Startup ===== -->
+            <TextBlock Text="Startup &amp; background" Classes="section" />
+            <Border Classes="row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                        <TextBlock Text="Start on login" Classes="rowTitle" />
+                        <TextBlock Text="Starts quietly in the background with the overlay ready when you log in." Classes="rowDesc" />
+                    </StackPanel>
+                    <ToggleSwitch x:Name="StartupToggle" Grid.Column="1" Click="Startup_Click" />
+                </Grid>
+            </Border>
+            <Border Classes="row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                        <TextBlock Text="Keep running when the window is closed" Classes="rowTitle" />
+                        <TextBlock x:Name="TrayDesc" Classes="rowDesc" />
+                    </StackPanel>
+                    <ToggleSwitch x:Name="TrayToggle" Grid.Column="1" Click="Changed" />
+                </Grid>
+            </Border>
+            <Border Classes="row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                        <TextBlock Text="Show CPU temperature in tray icon" Classes="rowTitle" />
+                        <TextBlock Text="Replaces the Ember icon with a live number." Classes="rowDesc" />
+                    </StackPanel>
+                    <ToggleSwitch x:Name="TrayTempToggle" Grid.Column="1" Click="Changed" />
+                </Grid>
+            </Border>
+
+            <!-- ===== Alerts ===== -->
+            <TextBlock Text="Alerts" Classes="section" />
+            <Border Classes="row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                        <TextBlock Text="Colour-code temperatures" Classes="rowTitle" />
+                        <TextBlock Text="Readings turn amber at the warning threshold and red at critical." Classes="rowDesc" />
+                    </StackPanel>
+                    <ToggleSwitch x:Name="ColorToggle" Grid.Column="1" Click="Changed" />
+                </Grid>
+            </Border>
+            <Border Classes="row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                        <TextBlock Text="Notify me when something stays hot" Classes="rowTitle" />
+                        <TextBlock Text="Shows a desktop notification when a part stays above its critical threshold. Repeats at most every 5 minutes." Classes="rowDesc" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+                        <TextBlock Text="for" Classes="caption" VerticalAlignment="Center" />
+                        <ComboBox x:Name="SustainCombo" MinWidth="120" Margin="0,0,8,0" SelectionChanged="Changed">
+                            <ComboBoxItem Content="5 seconds" Tag="5" />
+                            <ComboBoxItem Content="10 seconds" Tag="10" />
+                            <ComboBoxItem Content="30 seconds" Tag="30" />
+                            <ComboBoxItem Content="1 minute" Tag="60" />
+                        </ComboBox>
+                        <ToggleSwitch x:Name="NotifyToggle" Click="Changed" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <Border Classes="card" Padding="18,14" Margin="0,0,0,4">
+                <StackPanel>
+                    <Grid Margin="0,0,0,6" ColumnDefinitions="*,Auto">
+                        <TextBlock Text="Thresholds" Classes="rowTitle" />
+                        <Button Grid.Column="1" Classes="ghost" Content="Restore defaults" FontSize="12" Click="ResetThresholds_Click" />
+                    </Grid>
+                    <Grid ColumnDefinitions="*,110,110" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+                        <TextBlock Grid.Column="1" HorizontalAlignment="Center" Classes="overline" Foreground="{DynamicResource WarmBrush}" x:Name="WarnHeader" Text="WARNING" />
+                        <TextBlock Grid.Column="2" HorizontalAlignment="Center" Classes="overline" Foreground="{DynamicResource HotBrush}" x:Name="CritHeader" Text="CRITICAL" />
+                        <TextBlock Grid.Row="1" Text="Processor (CPU)" VerticalAlignment="Center" FontSize="13" />
+                        <TextBox Grid.Row="1" Grid.Column="1" x:Name="CpuWarn" Classes="threshold" />
+                        <TextBox Grid.Row="1" Grid.Column="2" x:Name="CpuCrit" Classes="threshold" />
+                        <TextBlock Grid.Row="2" Text="Graphics (GPU)" VerticalAlignment="Center" FontSize="13" />
+                        <TextBox Grid.Row="2" Grid.Column="1" x:Name="GpuWarn" Classes="threshold" />
+                        <TextBox Grid.Row="2" Grid.Column="2" x:Name="GpuCrit" Classes="threshold" />
+                        <TextBlock Grid.Row="3" Text="Memory (RAM)" VerticalAlignment="Center" FontSize="13" />
+                        <TextBox Grid.Row="3" Grid.Column="1" x:Name="RamWarn" Classes="threshold" />
+                        <TextBox Grid.Row="3" Grid.Column="2" x:Name="RamCrit" Classes="threshold" />
+                        <TextBlock Grid.Row="4" Text="Solid-state drives (SSD / NVMe)" VerticalAlignment="Center" FontSize="13" />
+                        <TextBox Grid.Row="4" Grid.Column="1" x:Name="SsdWarn" Classes="threshold" />
+                        <TextBox Grid.Row="4" Grid.Column="2" x:Name="SsdCrit" Classes="threshold" />
+                        <TextBlock Grid.Row="5" Text="Hard drives (HDD)" VerticalAlignment="Center" FontSize="13" />
+                        <TextBox Grid.Row="5" Grid.Column="1" x:Name="HddWarn" Classes="threshold" />
+                        <TextBox Grid.Row="5" Grid.Column="2" x:Name="HddCrit" Classes="threshold" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- ===== Appearance ===== -->
+            <TextBlock Text="Appearance" Classes="section" />
+            <Border Classes="row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Accent colour" Classes="rowTitle" />
+                        <TextBlock Text="Used for gauges, graphs and highlights." Classes="rowDesc" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+                        <ItemsControl x:Name="Swatches">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="2" /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Click="Swatch_Click" Tag="{Binding}" Classes="ghost" Padding="0" Width="26" Height="26" CornerRadius="13" ToolTip.Tip="{Binding}">
+                                        <Ellipse Width="18" Height="18" Fill="{Binding}" />
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBox x:Name="AccentHex" Width="90" MaxLength="9" Margin="4,0,0,0" />
+                        <Border Width="26" Height="26" CornerRadius="13" Background="{DynamicResource AccentBrush}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <Border Classes="row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Interface size" Classes="rowTitle" />
+                        <TextBlock Text="Scale this window's text and controls." Classes="rowDesc" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
+                        <TextBlock x:Name="UiScaleText" Classes="caption" Width="40" TextAlignment="Right" VerticalAlignment="Center" />
+                        <Slider x:Name="UiScaleSlider" Width="220" Minimum="0.8" Maximum="1.3" ValueChanged="Slider_Changed" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ===== Sensor setup ===== -->
+            <TextBlock Text="Sensor setup" Classes="section" />
+            <StackPanel x:Name="HintsPanel" />
+
+            <TextBlock Text="About" Classes="section" />
+            <Border Classes="row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="14">
+                        <Image Source="/Assets/ember.png" Width="36" Height="36" />
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock x:Name="VersionText" Text="Ember" Classes="rowTitle" FontWeight="SemiBold" />
+                            <TextBlock x:Name="SessionText" Classes="rowDesc" />
+                        </StackPanel>
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="Open settings folder" Click="OpenFolder_Click" />
+                </Grid>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

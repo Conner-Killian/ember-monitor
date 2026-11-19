@@ -1,0 +1,51 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:Ember.Controls"
+        x:Class="Ember.Views.MainWindow"
+        Title="Ember"
+        Icon="/Assets/ember.png"
+        Width="1180" Height="760" MinWidth="980" MinHeight="620"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource WindowBrush}"
+        Foreground="{DynamicResource TextBrush}">
+    <LayoutTransformControl x:Name="ScaleHost">
+        <Grid x:Name="RootGrid" ColumnDefinitions="232,*" RenderTransformOrigin="50%,50%">
+            <!-- ===== Navigation ===== -->
+            <Border Background="{DynamicResource SidebarBrush}">
+                <DockPanel Margin="10,14,10,14">
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="10,0,0,14" Spacing="10">
+                        <Image Source="/Assets/ember.png" Width="22" Height="22" RenderOptions.BitmapInterpolationMode="HighQuality" />
+                        <TextBlock Text="Ember" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Text="Temperature monitor" FontSize="12" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <Border DockPanel.Dock="Bottom" Classes="card" Padding="14,12" CornerRadius="12">
+                        <StackPanel>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="Overlay" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <ToggleSwitch x:Name="OverlayQuickToggle" Grid.Column="1" Click="OverlayQuickToggle_Click" />
+                            </Grid>
+                            <TextBlock x:Name="HotkeyHint" Classes="caption" Margin="0,4,0,0" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                    <StackPanel>
+                        <RadioButton x:Name="NavDashboard" Classes="nav" Tag="dashboard" Content="Dashboard" IsChecked="True" IsCheckedChanged="Nav_Changed" />
+                        <RadioButton x:Name="NavSensors" Classes="nav" Tag="list" Content="All sensors" IsCheckedChanged="Nav_Changed" />
+                        <RadioButton x:Name="NavOverlay" Classes="nav" Tag="monitor" Content="Overlay" IsCheckedChanged="Nav_Changed" />
+                        <RadioButton x:Name="NavSettings" Classes="nav" Tag="gear" Content="Settings" IsCheckedChanged="Nav_Changed" />
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <!-- ===== Pages ===== -->
+            <Border Grid.Column="1" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1,0,0,0">
+                <TransitioningContentControl x:Name="PageHost">
+                    <TransitioningContentControl.PageTransition>
+                        <CompositePageTransition>
+                            <CrossFade Duration="0:0:0.18" />
+                        </CompositePageTransition>
+                    </TransitioningContentControl.PageTransition>
+                </TransitioningContentControl>
+            </Border>
+        </Grid>
+    </LayoutTransformControl>
+</Window>

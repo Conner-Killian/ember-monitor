@@ -1,0 +1,87 @@
+# nfpm config: one description, three package formats (deb, rpm, archlinux).
+# Used by tools/build-linux.sh, which stages the files under ${STAGE} first.
+name: ember-monitor
+arch: amd64
+platform: linux
+version: ${VERSION}
+release: 1
+section: utils
+priority: optional
+maintainer: ${MAINTAINER}
+vendor: Ember
+homepage: ${HOMEPAGE}
+license: ${LICENSE}
+description: |-
+  Temperature monitor with an always-on-top overlay.
+  Ember shows CPU, GPU, RAM and drive temperatures (plus usage and power draw) in a
+  small click-through overlay for your desktop and borderless games, and a full
+  dashboard with live graphs and every sensor your hardware exposes.
+
+# Shared libraries Avalonia (the UI toolkit) loads at run time. Everything else, including
+# the .NET runtime, ships inside the package.
+depends:
+  - libc6
+  - libx11-6
+  - libxext6
+  - libxi6
+  - libice6
+  - libsm6
+  - libfontconfig1
+recommends:
+  - libnotify-bin
+suggests:
+  - lm-sensors
+  - gnome-shell-extension-appindicator
+
+overrides:
+  rpm:
+    # Library names differ between Fedora and openSUSE; depend on the sonames instead.
+    depends:
+      - libX11.so.6()(64bit)
+      - libXext.so.6()(64bit)
+      - libXi.so.6()(64bit)
+      - libICE.so.6()(64bit)
+      - libSM.so.6()(64bit)
+      - libfontconfig.so.1()(64bit)
+    recommends:
+      - libnotify
+  archlinux:
+    depends:
+      - libx11
+      - libxext
+      - libxi
+      - libice
+      - libsm
+      - fontconfig
+    recommends: []
+    suggests: []
+
+contents:
+  - src: ${STAGE}/usr/lib/ember-monitor/
+    dst: /usr/lib/ember-monitor/
+    type: tree
+  - src: /usr/lib/ember-monitor/ember-monitor
+    dst: /usr/bin/ember-monitor
+    type: symlink
+  - src: ${STAGE}/usr/share/applications/ember-monitor.desktop
+    dst: /usr/share/applications/ember-monitor.desktop
+  - src: ${STAGE}/usr/share/metainfo/ember-monitor.metainfo.xml
+    dst: /usr/share/metainfo/ember-monitor.metainfo.xml
+  - src: ${STAGE}/usr/share/icons/
+    dst: /usr/share/icons/
+    type: tree
+  - src: ${STAGE}/usr/lib/modules-load.d/ember-monitor.conf
+    dst: /usr/lib/modules-load.d/ember-monitor.conf
+  - src: ${STAGE}/usr/share/doc/ember-monitor/
+    dst: /usr/share/doc/ember-monitor/
+    type: tree
+
+scripts:
+  postinstall: packaging/linux/scripts/postinstall.sh
+  postremove: packaging/linux/scripts/postremove.sh
+
+deb:
+  compression: xz
+rpm:
+  compression: zstd
+  group: Applications/System

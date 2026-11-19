@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Ember for Linux (Avalonia). Shares the platform-neutral code of the Windows app
+       (settings model, sensor model, temperature formatting, alerts) as linked source files. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>ember-monitor</AssemblyName>
+    <RootNamespace>Ember</RootNamespace>
+    <Version>1.0.6</Version>
+    <Product>Ember</Product>
+    <Description>Ember – PC temperature monitor and overlay</Description>
+    <Copyright>© 2026</Copyright>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+    <!-- No libicu dependency: package works the same on every distro. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <ApplicationIcon />
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.3" />
+  </ItemGroup>
+
+  <!-- Shared with the Windows app -->
+  <ItemGroup>
+    <Compile Include="..\Ember\Models\AppSettings.cs" Link="Shared\AppSettings.cs" />
+    <Compile Include="..\Ember\Services\SensorModels.cs" Link="Shared\SensorModels.cs" />
+    <Compile Include="..\Ember\Services\Temps.cs" Link="Shared\Temps.cs" />
+    <Compile Include="..\Ember\Services\AlertService.cs" Link="Shared\AlertService.cs" />
+    <Compile Include="..\Ember\ViewModels\Observable.cs" Link="Shared\Observable.cs" />
+    <Compile Include="..\Ember\ViewModels\OverlayViewModel.cs" Link="Shared\OverlayViewModel.cs" />
+    <Compile Include="..\Ember\ViewModels\DashboardViewModel.cs" Link="Shared\DashboardViewModel.cs" />
+    <Compile Include="..\Ember\ViewModels\SensorsViewModel.cs" Link="Shared\SensorsViewModel.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+
+</Project>

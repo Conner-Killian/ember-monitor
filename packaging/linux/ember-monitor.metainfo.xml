@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>ember-monitor</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>LicenseRef-proprietary</project_license>
+  <name>Ember</name>
+  <summary>Temperature monitor with an always-on-top overlay</summary>
+  <description>
+    <p>
+      Ember shows your CPU, GPU, RAM and drive temperatures in a small, good-looking overlay that stays
+      on top of your desktop and borderless games, plus a full dashboard with live graphs.
+    </p>
+    <ul>
+      <li>Pill, card or ring overlay styles, click-through, drag it anywhere</li>
+      <li>Usage and power draw for CPU and GPU</li>
+      <li>Colour-coded warnings and desktop notifications when something runs hot</li>
+      <li>Every sensor your hardware exposes, with session minimum and maximum</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">ember-monitor.desktop</launchable>
+  <icon type="stock">ember-monitor</icon>
+  <categories>
+    <category>System</category>
+    <category>Monitor</category>
+  </categories>
+  <keywords>
+    <keyword>temperature</keyword>
+    <keyword>sensors</keyword>
+    <keyword>overlay</keyword>
+  </keywords>
+  <provides>
+    <binary>ember-monitor</binary>
+  </provides>
+  <releases>
+    <release version="1.0.6" date="2026-11-19" />
+  </releases>
+  <content_rating type="oars-1.1" />
+</component>

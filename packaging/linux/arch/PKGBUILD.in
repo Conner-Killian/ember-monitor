@@ -1,0 +1,23 @@
+# Maintainer: @MAINTAINER@
+# AUR package that repackages the prebuilt release tarball (no .NET SDK needed to install).
+pkgname=ember-monitor-bin
+pkgver=@VERSION@
+pkgrel=1
+pkgdesc="Temperature monitor with an always-on-top overlay for CPU, GPU, RAM and drives"
+arch=('x86_64')
+url="@HOMEPAGE@"
+license=('@LICENSE@')
+depends=('libx11' 'libxext' 'libxi' 'libice' 'libsm' 'fontconfig')
+optdepends=('libnotify: desktop notifications when something runs hot'
+            'nvidia-utils: NVIDIA graphics card readings'
+            'lm_sensors: sensors-detect, to find your motherboard sensor driver')
+provides=('ember-monitor')
+conflicts=('ember-monitor')
+options=('!strip' '!debug')
+source=("ember-monitor-${pkgver}-linux-x64.tar.gz::@HOMEPAGE@/releases/download/v${pkgver}/ember-monitor-${pkgver}-linux-x64.tar.gz")
+sha256sums=('@SHA256@')
+
+package() {
+  cd "ember-monitor-${pkgver}-linux-x64"
+  cp -a usr "${pkgdir}/"
+}

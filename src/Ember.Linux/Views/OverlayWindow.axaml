@@ -1,0 +1,14 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:v="using:Ember.Views"
+        x:Class="Ember.Views.OverlayWindow"
+        Title="Ember Overlay"
+        SystemDecorations="None"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        Topmost="True" ShowInTaskbar="False" ShowActivated="False" CanResize="False"
+        SizeToContent="WidthAndHeight"
+        WindowStartupLocation="Manual">
+    <!-- Margin leaves room for the soft outline; Left/Top alignment keeps the content at its natural size. -->
+    <v:OverlayContent x:Name="Ov" Margin="16" HorizontalAlignment="Left" VerticalAlignment="Top" />
+</Window>

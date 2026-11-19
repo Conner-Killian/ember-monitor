@@ -1,0 +1,220 @@
+<UserControl x:Class="Ember.Views.Pages.OverlayPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:v="clr-namespace:Ember.Views">
+    <UserControl.Resources>
+        <Style x:Key="RowTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        </Style>
+        <Style x:Key="RowDesc" TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+            <Setter Property="Margin" Value="0,2,0,0" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style x:Key="SectionTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+            <Setter Property="Margin" Value="2,22,0,10" />
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="28,22,28,28">
+        <StackPanel MaxWidth="980" HorizontalAlignment="Stretch">
+            <Grid>
+                <StackPanel>
+                    <TextBlock Text="Overlay" Style="{StaticResource H1}" />
+                    <TextBlock Text="A small always-on-top readout for your desktop and games running in borderless or windowed mode."
+                               Style="{StaticResource Caption}" FontSize="13" Margin="0,6,0,0" />
+                </StackPanel>
+                <CheckBox x:Name="ShowToggle" Style="{StaticResource ToggleSwitch}" HorizontalAlignment="Right" VerticalAlignment="Center" Click="Changed" />
+            </Grid>
+
+            <!-- ===== Preview + style ===== -->
+            <Border Style="{StaticResource Card}" Margin="0,20,0,0" Padding="0" ClipToBounds="True">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="200" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Border CornerRadius="13,13,0,0" ClipToBounds="True">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#252A4A" Offset="0" />
+                                <GradientStop Color="#36294F" Offset="0.55" />
+                                <GradientStop Color="#4A2C48" Offset="1" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Grid>
+                            <Ellipse Width="320" Height="320" Fill="#26B07CFF" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-80,0,0,-180">
+                                <Ellipse.Effect><BlurEffect Radius="60" /></Ellipse.Effect>
+                            </Ellipse>
+                            <Ellipse Width="260" Height="260" Fill="#226C8CFF" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-120,60,0">
+                                <Ellipse.Effect><BlurEffect Radius="60" /></Ellipse.Effect>
+                            </Ellipse>
+                            <TextBlock Text="LIVE PREVIEW" Style="{StaticResource Overline}" Foreground="#80FFFFFF" Margin="18,14,0,0" />
+                            <v:OverlayContent x:Name="Preview" IsPreview="True" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+                    <Grid Grid.Row="1" Margin="20,14">
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Style" Style="{StaticResource RowTitle}" />
+                            <TextBlock Text="Pick the layout that suits your screen." Style="{StaticResource RowDesc}" />
+                        </StackPanel>
+                        <Border Style="{StaticResource SegmentHost}" HorizontalAlignment="Right">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton x:Name="LayoutPill" Style="{StaticResource SegmentButton}" GroupName="Layout" Content="Pill" Click="Changed" />
+                                <RadioButton x:Name="LayoutCard" Style="{StaticResource SegmentButton}" GroupName="Layout" Content="Card" Click="Changed" />
+                                <RadioButton x:Name="LayoutRings" Style="{StaticResource SegmentButton}" GroupName="Layout" Content="Rings" Click="Changed" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- ===== Hotkey ===== -->
+            <TextBlock Text="Hotkey" Style="{StaticResource SectionTitle}" />
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,280,0">
+                        <TextBlock Text="Show / hide overlay" Style="{StaticResource RowTitle}" />
+                        <TextBlock Text="Works everywhere, even in games. Left and right modifier keys count as different keys, and you can use modifiers on their own (e.g. Right Ctrl + Right Alt)."
+                                   Style="{StaticResource RowDesc}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Border x:Name="HotkeyBox" Background="{DynamicResource InputBrush}" BorderBrush="{DynamicResource InputBorderBrush}"
+                                BorderThickness="1" CornerRadius="6" Padding="12,6" MinWidth="150" Margin="0,0,8,0">
+                            <TextBlock x:Name="HotkeyText" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                        </Border>
+                        <Button x:Name="RecordButton" Content="Change" Click="Record_Click" Margin="0,0,6,0" />
+                        <Button Style="{StaticResource GhostButton}" ToolTip="Reset to Right Ctrl + Right Alt" Click="ResetHotkey_Click">
+                            <TextBlock Text="&#xE777;" Style="{StaticResource Icon}" FontSize="14" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ===== Position ===== -->
+            <TextBlock Text="Position" Style="{StaticResource SectionTitle}" />
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,280,0">
+                        <TextBlock Text="Move overlay" Style="{StaticResource RowTitle}" />
+                        <TextBlock Text="Unlock the overlay and drag it anywhere, even onto an empty part of the taskbar. Once locked, clicks pass straight through it."
+                                   Style="{StaticResource RowDesc}" />
+                    </StackPanel>
+                    <Button x:Name="LockButton" HorizontalAlignment="Right" VerticalAlignment="Center" Click="Lock_Click" MinWidth="150">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="LockIcon" Text="&#xE785;" Style="{StaticResource Icon}" FontSize="13" Margin="0,0,8,0" />
+                            <TextBlock x:Name="LockText" Text="Unlock to move" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Border>
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Pin to a corner" Style="{StaticResource RowTitle}" />
+                        <TextBlock x:Name="AnchorDesc" Text="Pin the overlay to a corner of the selected display." Style="{StaticResource RowDesc}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <ComboBox x:Name="MonitorCombo" Margin="0,0,10,0" MinWidth="170" SelectionChanged="Monitor_Changed" />
+                        <Border Style="{StaticResource SegmentHost}">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton x:Name="AnchorTL" Style="{StaticResource SegmentButton}" GroupName="Anchor" ToolTip="Top left" Click="Changed" Padding="10,6">
+                                    <TextBlock Text="&#xE74A;" FontFamily="{StaticResource IconFont}" RenderTransformOrigin="0.5,0.5"><TextBlock.RenderTransform><RotateTransform Angle="-45" /></TextBlock.RenderTransform></TextBlock>
+                                </RadioButton>
+                                <RadioButton x:Name="AnchorTR" Style="{StaticResource SegmentButton}" GroupName="Anchor" ToolTip="Top right" Click="Changed" Padding="10,6">
+                                    <TextBlock Text="&#xE74A;" FontFamily="{StaticResource IconFont}" RenderTransformOrigin="0.5,0.5"><TextBlock.RenderTransform><RotateTransform Angle="45" /></TextBlock.RenderTransform></TextBlock>
+                                </RadioButton>
+                                <RadioButton x:Name="AnchorBL" Style="{StaticResource SegmentButton}" GroupName="Anchor" ToolTip="Bottom left" Click="Changed" Padding="10,6">
+                                    <TextBlock Text="&#xE74A;" FontFamily="{StaticResource IconFont}" RenderTransformOrigin="0.5,0.5"><TextBlock.RenderTransform><RotateTransform Angle="-135" /></TextBlock.RenderTransform></TextBlock>
+                                </RadioButton>
+                                <RadioButton x:Name="AnchorBR" Style="{StaticResource SegmentButton}" GroupName="Anchor" ToolTip="Bottom right" Click="Changed" Padding="10,6">
+                                    <TextBlock Text="&#xE74A;" FontFamily="{StaticResource IconFont}" RenderTransformOrigin="0.5,0.5"><TextBlock.RenderTransform><RotateTransform Angle="135" /></TextBlock.RenderTransform></TextBlock>
+                                </RadioButton>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ===== Content ===== -->
+            <TextBlock Text="What to show" Style="{StaticResource SectionTitle}" />
+            <Border Style="{StaticResource Card}" Padding="18,16">
+                <UniformGrid Columns="2">
+                    <CheckBox x:Name="ShowCpu" Content="CPU temperature" Margin="0,6" Click="Changed" />
+                    <CheckBox x:Name="ShowGpu" Content="GPU temperature" Margin="0,6" Click="Changed" />
+                    <CheckBox x:Name="ShowRam" Content="RAM temperature" Margin="0,6" Click="Changed" />
+                    <CheckBox x:Name="ShowDrives" Content="SSD / HDD temperatures" Margin="0,6" Click="Changed" />
+                    <CheckBox x:Name="ShowUsage" Content="Usage %" Margin="0,6" Click="Changed" />
+                    <CheckBox x:Name="ShowPower" Content="Power draw (W)" Margin="0,6" Click="Changed" />
+                    <CheckBox x:Name="ShowLabels" Content="Labels (CPU, GPU…)" Margin="0,6" Click="Changed" />
+                </UniformGrid>
+            </Border>
+            <TextBlock x:Name="RamNote" Style="{StaticResource Caption}" Margin="4,8,0,0" TextWrapping="Wrap"
+                       Text="No RAM temperature sensors were detected on this PC, so RAM won't appear on the overlay." Visibility="Collapsed" />
+
+            <StackPanel x:Name="DrivesPanel">
+                <TextBlock Text="Drives on overlay" Style="{StaticResource SectionTitle}" />
+                <Border Style="{StaticResource Card}" Padding="18,10">
+                    <ItemsControl x:Name="DriveList" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox IsChecked="{Binding Show}" Click="DriveChanged">
+                                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                    </CheckBox>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <TextBlock Text="Label" Style="{StaticResource Caption}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <TextBox Width="130" Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}" TextChanged="DriveLabelChanged" MaxLength="12" />
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+            </StackPanel>
+
+            <!-- ===== Look ===== -->
+            <TextBlock Text="Appearance" Style="{StaticResource SectionTitle}" />
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Background opacity" Style="{StaticResource RowTitle}" />
+                        <TextBlock Text="Lower values let more of your screen show through." Style="{StaticResource RowDesc}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <TextBlock x:Name="OpacityText" Style="{StaticResource Caption}" Width="40" TextAlignment="Right" Margin="0,0,12,0" VerticalAlignment="Center" />
+                        <Slider x:Name="OpacitySlider" Width="220" Minimum="0.2" Maximum="1" ValueChanged="Slider_Changed" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Size" Style="{StaticResource RowTitle}" />
+                        <TextBlock Text="Scale the overlay up or down." Style="{StaticResource RowDesc}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <TextBlock x:Name="ScaleText" Style="{StaticResource Caption}" Width="40" TextAlignment="Right" Margin="0,0,12,0" VerticalAlignment="Center" />
+                        <Slider x:Name="ScaleSlider" Width="220" Minimum="0.7" Maximum="1.8" ValueChanged="Slider_Changed" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,140,0">
+                        <TextBlock Text="Hide while Ember is focused" Style="{StaticResource RowTitle}" />
+                        <TextBlock Text="Temporarily hides the overlay while you're using this window." Style="{StaticResource RowDesc}" />
+                    </StackPanel>
+                    <CheckBox x:Name="HideWhenMain" Style="{StaticResource ToggleSwitch}" HorizontalAlignment="Right" Click="Changed" />
+                </Grid>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

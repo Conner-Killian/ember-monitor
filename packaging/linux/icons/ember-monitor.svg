@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2A2C38" />
+      <stop offset="1" stop-color="#121319" />
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#B07CFF" stop-opacity="0.37" />
+      <stop offset="1" stop-color="#B07CFF" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="outer" x1="0" y1="0.1" x2="0" y2="0.9">
+      <stop offset="0" stop-color="#E6D2FF" />
+      <stop offset="0.5" stop-color="#B07CFF" />
+      <stop offset="1" stop-color="#703EE6" />
+    </linearGradient>
+    <linearGradient id="inner" x1="0" y1="0.45" x2="0" y2="0.85">
+      <stop offset="0" stop-color="#FBF7FF" />
+      <stop offset="1" stop-color="#D3B4FF" />
+    </linearGradient>
+  </defs>
+  <rect x="5" y="5" width="246" height="246" rx="56" fill="url(#tile)" stroke="#FFFFFF" stroke-opacity="0.16" stroke-width="2" />
+  <ellipse cx="128" cy="174" rx="72" ry="66" fill="url(#glow)" />
+  <g transform="translate(25.6 28.2) scale(0.8)">
+    <path fill="url(#outer)" d="M128,30 C150,72 194,100 194,154 C194,198 164,226 128,226 C92,226 62,198 62,154 C62,122 79,101 93,83 C95,105 105,117 117,121 C113,91 117,60 128,30 Z" />
+    <path fill="url(#inner)" d="M128,122 C141,141 160,154 160,180 C160,201 146,213 128,213 C110,213 96,201 96,181 C96,163 109,151 117,139 C119,151 124,157 130,159 C128,147 126,135 128,122 Z" />
+  </g>
+</svg>

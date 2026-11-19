@@ -1,0 +1,176 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Ember.Controls"
+             x:Class="Ember.Views.Pages.DashboardPage">
+    <UserControl.Resources>
+        <DataTemplate x:Key="StatTile">
+            <Border Background="{DynamicResource SubtleFillBrush}" CornerRadius="9" Padding="12,9" Margin="0,0,8,8">
+                <StackPanel>
+                    <TextBlock Text="{Binding Label}" Classes="overline" />
+                    <TextBlock Text="{Binding Value}" FontSize="16" FontWeight="SemiBold" Margin="0,2,0,0" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+        <DataTemplate x:Key="KeyValueRow">
+            <Grid Margin="0,5" ColumnDefinitions="*,Auto">
+                <TextBlock Text="{Binding Label}" Foreground="{DynamicResource SubTextBrush}" FontSize="13" TextTrimming="CharacterEllipsis" Margin="0,0,12,0" />
+                <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="13" FontWeight="SemiBold" />
+            </Grid>
+        </DataTemplate>
+        <DataTemplate x:Key="HeroCard">
+            <Border Classes="card" Padding="22,20">
+                <Grid RowDefinitions="Auto,Auto,Auto">
+                    <StackPanel>
+                        <TextBlock Text="{Binding Sub}" Classes="overline" />
+                        <TextBlock Text="{Binding Name}" Classes="h2" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <Grid Grid.Row="1" Margin="0,18,0,0" ColumnDefinitions="Auto,*">
+                        <Grid Width="150" Height="150">
+                            <c:RingGauge Thickness="11" Value="{Binding Fraction}" Color="{Binding Color}" Sweep="270" />
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding Temp}" Foreground="{Binding Brush}" FontSize="44" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding Unit}" FontSize="16" Foreground="{DynamicResource SubTextBrush}" Margin="2,8,0,0" />
+                                </StackPanel>
+                                <TextBlock Text="{Binding SeverityText}" HorizontalAlignment="Center" FontSize="12" Foreground="{Binding Brush}" Opacity="0.85" Margin="0,-4,0,0" />
+                            </StackPanel>
+                        </Grid>
+                        <StackPanel Grid.Column="1" Margin="22,4,0,0" VerticalAlignment="Center">
+                            <ItemsControl ItemsSource="{Binding Stats}" ItemTemplate="{StaticResource StatTile}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><UniformGrid Columns="2" /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                            <StackPanel Orientation="Horizontal" Margin="2,2,0,0" Spacing="6" IsVisible="{Binding HasSecondary}">
+                                <c:Icon Kind="thermometer" Width="13" Height="13" Foreground="{DynamicResource MutedBrush}" />
+                                <TextBlock Text="{Binding Secondary}" Classes="caption" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Grid.Row="2" Margin="0,18,0,0">
+                        <Grid Margin="0,0,0,6" ColumnDefinitions="*,Auto">
+                            <TextBlock Text="LAST 5 MINUTES" Classes="overline" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <TextBlock Text="min " Classes="caption" />
+                                <TextBlock Text="{Binding Min}" FontSize="12" FontWeight="SemiBold" />
+                                <TextBlock Text="   max " Classes="caption" />
+                                <TextBlock Text="{Binding Max}" FontSize="12" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Grid>
+                        <c:Sparkline Height="70" Values="{Binding History}" Color="{Binding Color}" Capacity="300" MinSpan="8" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="28,22,28,28">
+            <Grid Margin="0,0,0,18" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                    <TextBlock Text="Overview" Classes="h1" />
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <Ellipse Width="8" Height="8" Fill="{Binding HeadlineBrush}" VerticalAlignment="Center" Margin="1,0,9,0" />
+                        <TextBlock Text="{Binding Headline}" FontSize="14" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding HeadlineSub}" Classes="caption" VerticalAlignment="Center" Margin="12,1,0,0" />
+                    </StackPanel>
+                </StackPanel>
+                <Button Grid.Column="1" VerticalAlignment="Top" Click="ResetMinMax_Click" ToolTip.Tip="Reset session min / max">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <c:Icon Kind="refresh" Width="14" Height="14" />
+                        <TextBlock Text="Reset min/max" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <Grid ColumnDefinitions="*,16,*">
+                <ContentControl Content="{Binding Cpu}" ContentTemplate="{StaticResource HeroCard}" />
+                <ContentControl Grid.Column="2" Content="{Binding Gpu}" ContentTemplate="{StaticResource HeroCard}" />
+            </Grid>
+
+            <Grid Margin="0,16,0,0" ColumnDefinitions="*,16,2*">
+                <Border Classes="card">
+                    <StackPanel>
+                        <TextBlock Text="MEMORY" Classes="overline" />
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                            <TextBlock Text="{Binding RamSummary}" Foreground="{Binding RamBrush}" FontSize="30" FontWeight="SemiBold" />
+                            <TextBlock Text="hottest DIMM" Classes="caption" VerticalAlignment="Bottom" Margin="10,0,0,7" IsVisible="{Binding HasRamTemps}" />
+                        </StackPanel>
+                        <TextBlock Classes="caption" TextWrapping="Wrap" Margin="0,4,0,0" IsVisible="{Binding !HasRamTemps}"
+                                   Text="No DIMM temperature sensors found. DDR5 modules have them, but Linux needs the spd5118 driver (kernel 6.11+). See Settings → Sensor setup." />
+                        <ItemsControl ItemsSource="{Binding RamSticks}" Margin="0,10,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,5">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Text="{Binding Name}" FontSize="13" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,0,12,0" />
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Temp}" FontSize="13" FontWeight="SemiBold" Foreground="{Binding Brush}" />
+                                                <TextBlock Text="{Binding Unit}" FontSize="13" FontWeight="SemiBold" Foreground="{Binding Brush}" />
+                                            </StackPanel>
+                                        </Grid>
+                                        <c:FractionBar Height="4" Margin="0,5,0,0" Value="{Binding Fraction}" Color="{Binding Color}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Rectangle Height="1" Fill="{DynamicResource DividerBrush}" Margin="0,12,0,8" />
+                        <ItemsControl ItemsSource="{Binding MemoryStats}" ItemTemplate="{StaticResource KeyValueRow}" />
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="2" Classes="card">
+                    <StackPanel>
+                        <TextBlock Text="STORAGE" Classes="overline" />
+                        <TextBlock Classes="caption" TextWrapping="Wrap" Margin="0,8,0,0" x:Name="NoDrivesText"
+                                   Text="No drive temperatures found. NVMe drives report them out of the box; SATA drives need the drivetemp module (see Settings → Sensor setup)." />
+                        <ItemsControl ItemsSource="{Binding Drives}" Margin="0,8,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,7" ColumnDefinitions="Auto,*,130,72">
+                                        <Border Width="36" Height="36" CornerRadius="9" Background="{DynamicResource SubtleFillBrush}" Margin="0,0,14,0">
+                                            <c:Icon Kind="drive" Width="18" Height="18" Foreground="{DynamicResource SubTextBrush}" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,14,0">
+                                            <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                                <Border Background="{DynamicResource AccentSoftBrush}" CornerRadius="4" Padding="6,1" Margin="0,0,8,0">
+                                                    <TextBlock Text="{Binding Media}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentLightBrush}" />
+                                                </Border>
+                                                <TextBlock Text="{Binding Used}" Classes="caption" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                        <c:Sparkline Grid.Column="2" Height="32" Values="{Binding History}" Color="{Binding Color}" Capacity="300" MinSpan="6" Margin="0,0,14,0" />
+                                        <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Temp}" Foreground="{Binding Brush}" FontSize="22" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding Unit}" Classes="caption" Margin="2,4,0,0" />
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <Grid Margin="0,16,0,0" ColumnDefinitions="*,16,*">
+                <Border Classes="card">
+                    <StackPanel>
+                        <TextBlock Text="FANS" Classes="overline" Margin="0,0,0,6" />
+                        <ItemsControl ItemsSource="{Binding Fans}" ItemTemplate="{StaticResource KeyValueRow}" />
+                        <TextBlock Classes="caption" TextWrapping="Wrap" IsVisible="{Binding !HasFans}"
+                                   Text="No fan speeds reported. Motherboard fans need a driver for your board's sensor chip (see Settings → Sensor setup)." />
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="2" Classes="card">
+                    <StackPanel>
+                        <TextBlock Text="MOTHERBOARD" Classes="overline" Margin="0,0,0,6" />
+                        <ItemsControl ItemsSource="{Binding BoardTemps}" ItemTemplate="{StaticResource KeyValueRow}" />
+                        <TextBlock Classes="caption" TextWrapping="Wrap" IsVisible="{Binding !HasBoardTemps}"
+                                   Text="No motherboard sensors reported." />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

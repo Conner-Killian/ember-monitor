@@ -1,0 +1,201 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:Ember.Controls"
+             xmlns:v="using:Ember.Views"
+             x:Class="Ember.Views.Pages.OverlayPage">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel MaxWidth="980" Margin="28,22,28,28">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel>
+                    <TextBlock Text="Overlay" Classes="h1" />
+                    <TextBlock Text="A small always-on-top readout for your desktop and games running in borderless or windowed mode."
+                               Classes="caption" FontSize="13" Margin="0,6,0,0" TextWrapping="Wrap" />
+                </StackPanel>
+                <ToggleSwitch x:Name="ShowToggle" Grid.Column="1" Click="Changed" />
+            </Grid>
+
+            <!-- ===== Preview + style ===== -->
+            <Border Classes="card" Margin="0,20,0,0" Padding="0" ClipToBounds="True">
+                <Grid RowDefinitions="200,Auto">
+                    <Border CornerRadius="13,13,0,0" ClipToBounds="True">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                                <GradientStop Color="#252A4A" Offset="0" />
+                                <GradientStop Color="#36294F" Offset="0.55" />
+                                <GradientStop Color="#4A2C48" Offset="1" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Grid>
+                            <TextBlock Text="LIVE PREVIEW" Classes="overline" Foreground="#80FFFFFF" Margin="18,14,0,0" />
+                            <v:OverlayContent x:Name="Preview" IsPreview="True" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+                    <Grid Grid.Row="1" Margin="20,14" ColumnDefinitions="*,Auto">
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Style" Classes="rowTitle" />
+                            <TextBlock Text="Pick the layout that suits your screen." Classes="rowDesc" />
+                        </StackPanel>
+                        <Border Grid.Column="1" Classes="segHost">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton x:Name="LayoutPill" Classes="seg" GroupName="Layout" Content="Pill" Click="Changed" />
+                                <RadioButton x:Name="LayoutCard" Classes="seg" GroupName="Layout" Content="Card" Click="Changed" />
+                                <RadioButton x:Name="LayoutRings" Classes="seg" GroupName="Layout" Content="Rings" Click="Changed" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- ===== Hotkey ===== -->
+            <TextBlock Text="Hotkey" Classes="section" />
+            <Border x:Name="HotkeyRow" Classes="row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                        <TextBlock x:Name="HotkeyTitle" Text="Show / hide overlay" Classes="rowTitle" />
+                        <TextBlock x:Name="HotkeyDesc" Classes="rowDesc" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="6">
+                        <Border x:Name="HotkeyBox" Background="{DynamicResource InputBrush}" BorderBrush="{DynamicResource InputBorderBrush}"
+                                BorderThickness="1" CornerRadius="6" Padding="12,6" MinWidth="150">
+                            <TextBlock x:Name="HotkeyText" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                        </Border>
+                        <Button x:Name="RecordButton" Content="Change" Click="Record_Click" />
+                        <Button x:Name="ResetButton" Classes="ghost" ToolTip.Tip="Reset to the default" Click="ResetHotkey_Click">
+                            <c:Icon Kind="refresh" Width="15" Height="15" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <!-- Wayland desktops other than GNOME: bind the command yourself -->
+            <Border x:Name="CommandRow" Classes="row" IsVisible="False">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                        <TextBlock Text="Add a keyboard shortcut" Classes="rowTitle" />
+                        <TextBlock x:Name="CommandDesc" Classes="rowDesc" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="6">
+                        <Border Classes="code"><TextBlock x:Name="CommandText" Classes="mono" /></Border>
+                        <Button Classes="ghost" ToolTip.Tip="Copy" Click="CopyCommand_Click"><c:Icon Kind="copy" Width="15" Height="15" /></Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ===== Position ===== -->
+            <TextBlock Text="Position" Classes="section" />
+            <Border Classes="row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                        <TextBlock Text="Move overlay" Classes="rowTitle" />
+                        <TextBlock Text="Unlock the overlay and drag it anywhere, even onto an empty part of a panel. Once locked, clicks pass straight through it." Classes="rowDesc" />
+                    </StackPanel>
+                    <Button x:Name="LockButton" Grid.Column="1" Click="Lock_Click" MinWidth="150">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <c:Icon x:Name="LockIcon" Kind="unlock" Width="14" Height="14" />
+                            <TextBlock x:Name="LockText" Text="Unlock to move" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Border>
+            <Border Classes="row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                        <TextBlock Text="Pin to a corner" Classes="rowTitle" />
+                        <TextBlock x:Name="AnchorDesc" Text="Pin the overlay to a corner of the selected display." Classes="rowDesc" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
+                        <ComboBox x:Name="MonitorCombo" MinWidth="170" SelectionChanged="Monitor_Changed" />
+                        <Border Classes="segHost">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton x:Name="AnchorTL" Classes="seg" GroupName="Anchor" ToolTip.Tip="Top left" Click="Changed" Padding="10,6">
+                                    <c:Icon Kind="arrow" Width="14" Height="14" RenderTransform="rotate(-45deg)" />
+                                </RadioButton>
+                                <RadioButton x:Name="AnchorTR" Classes="seg" GroupName="Anchor" ToolTip.Tip="Top right" Click="Changed" Padding="10,6">
+                                    <c:Icon Kind="arrow" Width="14" Height="14" RenderTransform="rotate(45deg)" />
+                                </RadioButton>
+                                <RadioButton x:Name="AnchorBL" Classes="seg" GroupName="Anchor" ToolTip.Tip="Bottom left" Click="Changed" Padding="10,6">
+                                    <c:Icon Kind="arrow" Width="14" Height="14" RenderTransform="rotate(-135deg)" />
+                                </RadioButton>
+                                <RadioButton x:Name="AnchorBR" Classes="seg" GroupName="Anchor" ToolTip.Tip="Bottom right" Click="Changed" Padding="10,6">
+                                    <c:Icon Kind="arrow" Width="14" Height="14" RenderTransform="rotate(135deg)" />
+                                </RadioButton>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ===== Content ===== -->
+            <TextBlock Text="What to show" Classes="section" />
+            <Border Classes="card" Padding="18,16">
+                <UniformGrid Columns="2">
+                    <CheckBox x:Name="ShowCpu" Content="CPU temperature" Margin="0,4" Click="Changed" />
+                    <CheckBox x:Name="ShowGpu" Content="GPU temperature" Margin="0,4" Click="Changed" />
+                    <CheckBox x:Name="ShowRam" Content="RAM temperature" Margin="0,4" Click="Changed" />
+                    <CheckBox x:Name="ShowDrives" Content="SSD / HDD temperatures" Margin="0,4" Click="Changed" />
+                    <CheckBox x:Name="ShowUsage" Content="Usage %" Margin="0,4" Click="Changed" />
+                    <CheckBox x:Name="ShowPower" Content="Power draw (W)" Margin="0,4" Click="Changed" />
+                    <CheckBox x:Name="ShowLabels" Content="Labels (CPU, GPU…)" Margin="0,4" Click="Changed" />
+                </UniformGrid>
+            </Border>
+            <TextBlock x:Name="RamNote" Classes="caption" Margin="4,8,0,0" TextWrapping="Wrap" IsVisible="False"
+                       Text="No RAM temperature sensors were detected, so RAM won't appear on the overlay." />
+
+            <StackPanel x:Name="DrivesPanel">
+                <TextBlock Text="Drives on overlay" Classes="section" />
+                <Border Classes="card" Padding="18,10">
+                    <ItemsControl x:Name="DriveList">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,6" ColumnDefinitions="*,Auto">
+                                    <CheckBox IsChecked="{Binding Show}" Click="DriveChanged">
+                                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                    </CheckBox>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="Label" Classes="caption" VerticalAlignment="Center" />
+                                        <TextBox Width="130" Text="{Binding Label}" MaxLength="12" TextChanged="DriveLabelChanged" />
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+            </StackPanel>
+
+            <!-- ===== Look ===== -->
+            <TextBlock Text="Appearance" Classes="section" />
+            <Border Classes="row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Background opacity" Classes="rowTitle" />
+                        <TextBlock Text="Lower values let more of your screen show through." Classes="rowDesc" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
+                        <TextBlock x:Name="OpacityText" Classes="caption" Width="40" TextAlignment="Right" VerticalAlignment="Center" />
+                        <Slider x:Name="OpacitySlider" Width="220" Minimum="0.2" Maximum="1" ValueChanged="Slider_Changed" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <Border Classes="row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Size" Classes="rowTitle" />
+                        <TextBlock Text="Scale the overlay up or down." Classes="rowDesc" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
+                        <TextBlock x:Name="ScaleText" Classes="caption" Width="40" TextAlignment="Right" VerticalAlignment="Center" />
+                        <Slider x:Name="ScaleSlider" Width="220" Minimum="0.7" Maximum="1.8" ValueChanged="Slider_Changed" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <Border Classes="row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                        <TextBlock Text="Hide while Ember is focused" Classes="rowTitle" />
+                        <TextBlock Text="Temporarily hides the overlay while you're using this window." Classes="rowDesc" />
+                    </StackPanel>
+                    <ToggleSwitch x:Name="HideWhenMain" Grid.Column="1" Click="Changed" />
+                </Grid>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

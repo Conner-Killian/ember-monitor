@@ -1,0 +1,15 @@
+<Window x:Class="Ember.Views.OverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:v="clr-namespace:Ember.Views"
+        Title="Ember Overlay"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True" ShowInTaskbar="False" ShowActivated="False" Focusable="False"
+        ResizeMode="NoResize" SizeToContent="WidthAndHeight"
+        Left="-10000" Top="-10000">
+    <!-- Margin leaves room for the drop shadow -->
+    <!-- Left/Top alignment: the content is always measured at its natural size, never stretched to
+         whatever size the window happens to have (e.g. WPF's default size before SizeToContent). -->
+    <v:OverlayContent x:Name="Ov" Margin="16" HorizontalAlignment="Left" VerticalAlignment="Top"
+                      RenderTransformOrigin="0.5,0.5" />
+</Window>
