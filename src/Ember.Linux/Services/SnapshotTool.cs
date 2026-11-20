@@ -7,6 +7,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.VisualTree;
 using Ember.Models;
 using Ember.Services.Linux;
 using Ember.ViewModels;
@@ -53,7 +54,14 @@ public static class SnapshotTool
         File.WriteAllText(Path.Combine(dir, "sensors.txt"), sb.ToString());
 
         // Pages
-        main.Width = 1280; main.Height = 900;
+        // EMBER_SNAPSHOT_SIZE=WxH renders at another window size (layout checks, e.g. the 980x620 minimum).
+        var size = Environment.GetEnvironmentVariable("EMBER_SNAPSHOT_SIZE")?.Split('x');
+        if (size is [var sw, var sh] && double.TryParse(sw, out var w) && double.TryParse(sh, out var hgt))
+        {
+            main.MinWidth = main.MinHeight = 0; // a small screen can force the window below its usual minimum
+            main.Width = w; main.Height = hgt;
+        }
+        else { main.Width = 1280; main.Height = 900; }
         foreach (var nav in new[] { "NavDashboard", "NavSensors", "NavLog", "NavOverlay", "NavSettings" })
         {
             main.Navigate(nav);
@@ -75,6 +83,16 @@ public static class SnapshotTool
                     Render(main, Path.Combine(dir, hours < 24 ? $"main_log_{hours}h.png" : $"main_log_{hours / 24}d.png"));
                 }
                 lp.SetRange(savedView);
+            }
+            if (nav == "NavOverlay" && main.FindControl<TransitioningContentControl>("PageHost")?.Content is Views.Pages.OverlayPage op &&
+                op.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault() is { } os &&
+                op.FindControl<ItemsControl>("PresetList") is { } presets && presets.TranslatePoint(new Point(0, 0), op) is { } at)
+            {
+                // The Presets section near the top of the view.
+                os.Offset = new Avalonia.Vector(0, Math.Max(0, at.Y - 120));
+                await Task.Delay(500);
+                Render(main, Path.Combine(dir, "main_overlay_presets.png"));
+                os.Offset = default;
             }
             if (nav == "NavSettings" && main.FindControl<TransitioningContentControl>("PageHost")?.Content is Views.Pages.SettingsPage sp &&
                 sp.FindControl<ScrollViewer>("Scroller") is { } ss)

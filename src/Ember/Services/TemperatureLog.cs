@@ -263,43 +263,65 @@ public sealed class TemperatureLog : IDisposable
         {
             // Rows from an earlier lap of the ring (older than one capacity before 'to') are stale.
             long oldest = Math.Max(Math.Max(0, fromMinute), toMinute - Capacity + 1);
-            var lists = _series.Select(_ => new List<LogPoint>()).ToArray();
             if (toMinute < oldest) return new List<LogSeriesData>();
-
-            // Only the rows for the requested minutes are read: one contiguous stretch of the ring,
-            // or two when it wraps around the end of the file.
-            int count = (int)(toMinute - oldest + 1);
-            var buf = new byte[(long)count * RowBytes];
-            int firstSlot = (int)(oldest % Capacity);
-            int part1 = Math.Min(count, Capacity - firstSlot);
-            ReadExactly(HeaderBytes + (long)firstSlot * RowBytes, buf, 0, part1 * RowBytes);
-            if (part1 < count) ReadExactly(HeaderBytes, buf, part1 * RowBytes, (count - part1) * RowBytes);
 
             // Unsaved minutes (pending and in progress) take precedence over what's on disk.
             var memory = new Dictionary<long, byte[]>();
             foreach (var (m, row) in _pending) memory[m] = row;
             if (_curMinute >= 0 && BuildRow(_curMinute, _min, _sum, _max, _count) is { } cur) memory[_curMinute] = cur;
 
-            for (int i = 0; i < count; i++)
+            // Two passes over the rows (count, then fill) so each component gets one array of exactly
+            // the right size: a year of minutes would otherwise mean hundreds of MB of growing lists.
+            int n = _series.Count;
+            var counts = new int[n];
+            VisitRows(oldest, toMinute, memory, (_, r) =>
             {
-                long m = oldest + i;
-                ReadOnlySpan<byte> r;
-                if (memory.TryGetValue(m, out var mem)) r = mem;
-                else
-                {
-                    r = buf.AsSpan(i * RowBytes, RowBytes);
-                    if (BitConverter.ToUInt32(r) != (uint)m) continue; // empty, or from an earlier lap
-                }
-                for (int s = 0; s < lists.Length; s++)
+                for (int s = 0; s < n; s++) if (r[5 + s * 3] != 0) counts[s]++;
+            });
+            var points = counts.Select(c => new LogPoint[c]).ToArray();
+            var filled = new int[n];
+            VisitRows(oldest, toMinute, memory, (m, r) =>
+            {
+                for (int s = 0; s < n; s++)
                 {
                     byte av = r[5 + s * 3];
-                    if (av != 0) lists[s].Add(new LogPoint(m, Dec(r[4 + s * 3]), Dec(av), Dec(r[6 + s * 3])));
+                    if (av != 0 && filled[s] < points[s].Length)
+                        points[s][filled[s]++] = new LogPoint(m, Dec(r[4 + s * 3]), Dec(av), Dec(r[6 + s * 3]));
                 }
-            }
+            });
             var result = new List<LogSeriesData>();
-            for (int s = 0; s < lists.Length; s++)
-                if (lists[s].Count > 0) result.Add(new LogSeriesData { Series = _series[s], Points = lists[s].ToArray() });
+            for (int s = 0; s < n; s++)
+                if (filled[s] > 0) result.Add(new LogSeriesData { Series = _series[s], Points = points[s] });
             return result;
+        }
+    }
+
+    private delegate void RowVisitor(long minute, ReadOnlySpan<byte> row);
+
+    /// <summary>
+    /// Calls <paramref name="visit"/> for every recorded minute in [oldest, to], oldest first (unsaved
+    /// rows win over disk). Reads the ring in small chunks; only the requested rows are touched.
+    /// Caller holds <see cref="_gate"/>.
+    /// </summary>
+    private void VisitRows(long oldest, long toMinute, Dictionary<long, byte[]> memory, RowVisitor visit)
+    {
+        const int ChunkRows = 4096; // ~200 KB per read
+        var buf = new byte[(int)Math.Min(ChunkRows, toMinute - oldest + 1) * RowBytes];
+        for (long m0 = oldest; m0 <= toMinute; m0 += ChunkRows)
+        {
+            // One stretch of the ring, or two when it wraps around the end of the file.
+            int count = (int)Math.Min(ChunkRows, toMinute - m0 + 1);
+            int slot = (int)(m0 % Capacity);
+            int part1 = Math.Min(count, Capacity - slot);
+            ReadExactly(HeaderBytes + (long)slot * RowBytes, buf, 0, part1 * RowBytes);
+            if (part1 < count) ReadExactly(HeaderBytes, buf, part1 * RowBytes, (count - part1) * RowBytes);
+            for (int i = 0; i < count; i++)
+            {
+                long m = m0 + i;
+                if (memory.Count > 0 && memory.TryGetValue(m, out var mem)) { visit(m, mem); continue; }
+                var r = buf.AsSpan(i * RowBytes, RowBytes);
+                if (BitConverter.ToUInt32(r) == (uint)m) visit(m, r); // else empty, or from an earlier lap
+            }
         }
     }
 
@@ -398,11 +420,25 @@ public static class LogAnalysis
         return new Stats(sum / pts.Count, min, peak, DateTime.UnixEpoch.AddMinutes(peakMinute).ToLocalTime(), pts.Count, warm, hot);
     }
 
-    public static List<Day> Daily(IReadOnlyList<LogPoint> pts) =>
-        pts.GroupBy(p => p.LocalTime.Date)
-           .OrderByDescending(g => g.Key)
-           .Select(g => new Day(g.Key, g.Min(p => p.Min), g.Average(p => p.Avg), g.Max(p => p.Max), g.Count()))
-           .ToList();
+    /// <summary>Per local calendar day, newest first.</summary>
+    public static List<Day> Daily(IReadOnlyList<LogPoint> pts)
+    {
+        var days = new Dictionary<DateTime, (double min, double sum, double max, int n)>();
+        // Converting every minute to local time is the slow part. Time-zone offsets and DST changes
+        // fall on 15-minute boundaries, so the local date is the same throughout a 15-minute block.
+        long block = long.MinValue; DateTime date = default;
+        foreach (var p in pts)
+        {
+            long b = Math.DivRem(p.Minute, 15, out long rem) - (rem < 0 ? 1 : 0);
+            if (b != block) { block = b; date = p.LocalTime.Date; }
+            days[date] = days.TryGetValue(date, out var d)
+                ? (Math.Min(d.min, p.Min), d.sum + p.Avg, Math.Max(d.max, p.Max), d.n + 1)
+                : (p.Min, p.Avg, p.Max, 1);
+        }
+        return days.OrderByDescending(kv => kv.Key)
+                   .Select(kv => new Day(kv.Key, kv.Value.min, kv.Value.sum / kv.Value.n, kv.Value.max, kv.Value.n))
+                   .ToList();
+    }
 
     /// <summary>Reduces minutes to <paramref name="bins"/> columns spanning [from, to].</summary>
     public static Bin[] Downsample(IReadOnlyList<LogPoint> pts, long fromMinute, long toMinute, int bins)

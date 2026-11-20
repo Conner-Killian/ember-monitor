@@ -48,11 +48,28 @@
 
             <!-- ===== Hotkey ===== -->
             <TextBlock Text="Hotkey" Classes="section" />
+            <!-- Wayland: one-time permission so hotkeys work like on Windows (read the keyboard directly). -->
+            <Border x:Name="EnableRow" Classes="row" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" IsVisible="False">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                        <TextBlock Text="Turn on hotkeys" Classes="rowTitle" />
+                        <TextBlock Classes="rowDesc" TextWrapping="Wrap"
+                                   Text="On Wayland, apps can't see key presses until you allow it. Allow it once (Ember asks for your password) and the show / hide hotkey and every preset's hotkey work everywhere, even in games, just like on Windows. This lets programs you run read the keyboard, as they always could on X11." />
+                        <TextBlock x:Name="EnableNote" Classes="rowDesc" Foreground="{DynamicResource WarmBrush}" TextWrapping="Wrap" IsVisible="False" Margin="0,6,0,0" />
+                        <StackPanel x:Name="EnableManual" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0" IsVisible="False">
+                            <Border Classes="code"><TextBlock x:Name="EnableCommandText" Classes="mono" TextWrapping="Wrap" MaxWidth="520" /></Border>
+                            <Button Classes="ghost" ToolTip.Tip="Copy" Click="CopyEnableCommand_Click" VerticalAlignment="Top"><c:Icon Kind="copy" Width="15" Height="15" /></Button>
+                        </StackPanel>
+                    </StackPanel>
+                    <Button x:Name="EnableButton" Grid.Column="1" Classes="accent" Content="Allow hotkeys" Click="EnableHotkeys_Click" VerticalAlignment="Center" />
+                </Grid>
+            </Border>
             <Border x:Name="HotkeyRow" Classes="row">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
                         <TextBlock x:Name="HotkeyTitle" Text="Show / hide overlay" Classes="rowTitle" />
                         <TextBlock x:Name="HotkeyDesc" Classes="rowDesc" />
+                        <TextBlock x:Name="HotkeyNote" Classes="rowDesc" Foreground="{DynamicResource WarmBrush}" IsVisible="False" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="6">
                         <Border x:Name="HotkeyBox" Background="{DynamicResource InputBrush}" BorderBrush="{DynamicResource InputBorderBrush}"
@@ -79,6 +96,67 @@
                     </StackPanel>
                 </Grid>
             </Border>
+
+            <!-- ===== Presets ===== -->
+            <TextBlock Text="Presets" Classes="section" />
+            <TextBlock x:Name="PresetIntro" Classes="caption" TextWrapping="Wrap" Margin="2,-4,0,10" />
+            <ItemsControl x:Name="PresetList">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Classes="row">
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+                                <!-- Name (editable) and what the preset shows -->
+                                <StackPanel Margin="0,0,20,0">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <TextBox Text="{Binding Name}" MinWidth="200" MaxLength="40" FontSize="14" ToolTip.Tip="Rename"
+                                                 LostFocus="PresetName_LostFocus" KeyDown="PresetName_KeyDown" />
+                                        <Border Background="{DynamicResource AccentSoftBrush}" CornerRadius="4" Padding="7,2" VerticalAlignment="Center" IsVisible="{Binding IsActive}">
+                                            <TextBlock Text="Showing" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentLightBrush}" />
+                                        </Border>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding Summary}" Classes="rowDesc" Margin="2,6,0,0" />
+                                </StackPanel>
+                                <Button Grid.Column="1" Classes="accent" Content="Switch to it" VerticalAlignment="Top" MinWidth="110" Click="PresetApply_Click" />
+                                <!-- Hotkey (X11, GNOME) or the command to bind yourself (other Wayland desktops) -->
+                                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" Margin="0,12,0,0"
+                                            IsVisible="{Binding Command, Converter={x:Static StringConverters.IsNullOrEmpty}}">
+                                    <Border Classes="keyBox" Classes.recording="{Binding IsRecording}" Background="{DynamicResource InputBrush}"
+                                            BorderThickness="1" CornerRadius="6" Padding="12,6" MinWidth="150">
+                                        <TextBlock Text="{Binding HotkeyText}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                                    </Border>
+                                    <Button Content="{Binding RecordText}" Click="PresetRecord_Click" />
+                                    <Button Classes="ghost" ToolTip.Tip="Remove the hotkey" Click="PresetClearKey_Click" IsVisible="{Binding HasHotkey}">
+                                        <c:Icon Kind="close" Width="13" Height="13" />
+                                    </Button>
+                                </StackPanel>
+                                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" Margin="0,12,0,0"
+                                            IsVisible="{Binding Command, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                    <Border Classes="code"><TextBlock Text="{Binding Command}" Classes="mono" /></Border>
+                                    <Button Classes="ghost" ToolTip.Tip="Copy" Click="PresetCopyCommand_Click"><c:Icon Kind="copy" Width="15" Height="15" /></Button>
+                                </StackPanel>
+                                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="6" Margin="0,12,0,0" HorizontalAlignment="Right">
+                                    <Button Content="Update" ToolTip.Tip="Replace this preset with the overlay's current setup" Click="PresetUpdate_Click" />
+                                    <Button Classes="ghost" ToolTip.Tip="Delete this preset" Click="PresetDelete_Click">
+                                        <c:Icon Kind="trash" Width="15" Height="15" />
+                                    </Button>
+                                </StackPanel>
+                                <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="{Binding Note}" Classes="rowDesc" Foreground="{DynamicResource WarmBrush}"
+                                           Margin="2,8,0,0" IsVisible="{Binding HasNote}" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Border x:Name="PresetEmpty" Classes="row">
+                <TextBlock Classes="rowDesc" Margin="0" TextWrapping="Wrap"
+                           Text="No presets yet. Set the overlay up the way you want it (style, display, position, readings), then save it here. Make as many as you like." />
+            </Border>
+            <Button HorizontalAlignment="Left" Margin="0,6,0,0" Click="PresetAdd_Click">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <c:Icon Kind="plus" Width="13" Height="13" />
+                    <TextBlock Text="Save current setup as a preset" />
+                </StackPanel>
+            </Button>
 
             <!-- ===== Position ===== -->
             <TextBlock Text="Position" Classes="section" />
@@ -198,4 +276,8 @@
             </Border>
         </StackPanel>
     </ScrollViewer>
+    <UserControl.Styles>
+        <Style Selector="Border.keyBox"><Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}" /></Style>
+        <Style Selector="Border.keyBox.recording"><Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" /></Style>
+    </UserControl.Styles>
 </UserControl>

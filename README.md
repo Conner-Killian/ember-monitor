@@ -23,10 +23,12 @@
 - **Overlay**: a compact, always-on-top readout of CPU, GPU, RAM and drive temperatures, toggled with a
   global hotkey. Three styles (Pill, Card, Rings), adjustable size and opacity, and optional usage and
   power-draw readings. When locked, clicks pass straight through it.
+- **Overlay presets**: save as many overlay setups as you like (style, display, position, readings,
+  size) and switch between them from the Overlay page, the tray menu or each preset's own hotkey.
 - **Dashboard**: current, minimum and maximum readings with live graphs for each component.
 - **All sensors**: every sensor the system reports (temperatures, loads, clocks, fans, voltages, power), grouped by device.
-- **Log** (optional, off by default): records CPU, GPU, memory and drive temperatures and shows the
-  last 24 hours or 7 days as charts, with averages, peaks, time spent above the warning threshold and
+- **Log** (optional, off by default): records CPU, GPU, memory and drive temperatures and shows
+  anything from the last hour to the last year as charts, with averages, peaks, time spent above the warning threshold and
   a daily summary. It keeps 7 days by default (adjustable up to a year) in a single fixed-size file
   (about 0.5 MB for 7 days). The file is written every 10 minutes, so it never grows and causes very
   little disk wear.
@@ -82,7 +84,7 @@ tasks so Ember starts elevated without a UAC prompt, both at sign-in and when la
 | Arch, Manjaro, EndeavourOS | `sudo pacman -U ./ember-monitor-<version>-1-x86_64.pkg.tar.zst` |
 | Other | `chmod +x Ember-<version>-x86_64.AppImage && ./Ember-<version>-x86_64.AppImage` |
 
-See [packaging/linux/README-linux.md](packaging/linux/README-linux.md) for hotkey setup on Wayland,
+See [packaging/linux/README-linux.md](packaging/linux/README-linux.md) for hotkeys on Wayland (a one-time *Allow hotkeys* step),
 tray support on GNOME, and enabling additional sensors.
 
 ## Usage
@@ -90,6 +92,7 @@ tray support on GNOME, and enabling additional sensors.
 | Action | How |
 |---|---|
 | Show / hide the overlay | **Right Ctrl + Right Alt** (default). Change it under *Overlay → Hotkey*. |
+| Switch between overlay setups | *Overlay → Presets*: save the current setup, then switch from there, the tray menu or the preset's hotkey. |
 | Move the overlay | *Overlay → Unlock to move*, or from the tray menu. Drag it into place, then lock it again. |
 | Pin to a corner or monitor | *Overlay → Position*. |
 | Change units, thresholds and startup | *Settings*. |
@@ -105,6 +108,7 @@ above all other windows, so the overlay cannot appear there.
 | `--snapshot <folder>` | Writes a full sensor report (`sensors.txt`) and screenshots of every page, for bug reports. Add `--no-elevate` on Windows to run it without admin rights next to a running Ember. |
 | `--exit` | Closes the running instance. |
 | `--toggle-overlay` | Shows or hides the overlay (Linux; used for desktop keyboard shortcuts). |
+| `--preset <name>` | Switches the overlay to a preset; again while it's showing hides it (Linux). |
 | `--tray` | Starts in the background without opening the main window. |
 | `--profile <file>` | Measures Ember's own CPU usage (Windows). |
 | `--register` / `--cleanup` | Creates / removes the startup tasks. Used by the installer (Windows, elevated). |

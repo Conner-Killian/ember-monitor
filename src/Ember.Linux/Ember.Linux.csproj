@@ -10,7 +10,7 @@
     <LangVersion>latest</LangVersion>
     <AssemblyName>ember-monitor</AssemblyName>
     <RootNamespace>Ember</RootNamespace>
-    <Version>1.2.1</Version>
+    <Version>1.3.0</Version>
     <Product>Ember</Product>
     <Description>Ember – PC temperature monitor and overlay</Description>
     <Copyright>© 2026 Conner Killian. MIT License.</Copyright>
@@ -40,6 +40,7 @@
     <Compile Include="..\Ember\Services\TemperatureLog.cs" Link="Shared\TemperatureLog.cs" />
     <Compile Include="..\Ember\ViewModels\LogViewModel.cs" Link="Shared\LogViewModel.cs" />
     <Compile Include="..\Ember\ViewModels\Observable.cs" Link="Shared\Observable.cs" />
+    <Compile Include="..\Ember\ViewModels\PresetRow.cs" Link="Shared\PresetRow.cs" />
     <Compile Include="..\Ember\ViewModels\OverlayViewModel.cs" Link="Shared\OverlayViewModel.cs" />
     <Compile Include="..\Ember\ViewModels\DashboardViewModel.cs" Link="Shared\DashboardViewModel.cs" />
     <Compile Include="..\Ember\ViewModels\SensorsViewModel.cs" Link="Shared\SensorsViewModel.cs" />

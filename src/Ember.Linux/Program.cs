@@ -21,6 +21,8 @@ public static class Program
                   ember-monitor                   open Ember (or bring the running window forward)
                   ember-monitor --tray            start in the background (used for start-on-login)
                   ember-monitor --toggle-overlay  show / hide the overlay (bind this to a keyboard shortcut)
+                  ember-monitor --preset ID|NAME  switch the overlay to a preset (Overlay page → Presets);
+                                                  again while it's showing hides the overlay
                   ember-monitor --exit            quit the running Ember
                   ember-monitor --snapshot DIR    write a sensor report and screenshots to DIR, then exit
                 """);
@@ -31,7 +33,9 @@ public static class Program
         bool diagnostics = Has("--snapshot");
         if (!diagnostics)
         {
-            string cmd = Has("--toggle-overlay") ? "toggle" : Has("--exit") ? "exit" : Has("--tray") ? "noop" : "show";
+            int pi = Array.FindIndex(args, a => a.Equals("--preset", StringComparison.OrdinalIgnoreCase));
+            string cmd = pi >= 0 && pi + 1 < args.Length ? "preset:" + args[pi + 1]
+                       : Has("--toggle-overlay") ? "toggle" : Has("--exit") ? "exit" : Has("--tray") ? "noop" : "show";
             if (SingleInstance.TrySend(cmd)) return 0;
             if (cmd == "exit") return 0; // nothing to quit
         }

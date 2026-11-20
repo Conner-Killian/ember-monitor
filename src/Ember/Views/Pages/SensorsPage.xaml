@@ -3,6 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:Ember.ViewModels">
     <UserControl.Resources>
+        <!-- 0 on a narrow page (SensorsPage.ApplyWidth): sensor names get the room instead. -->
+        <GridLength x:Key="TypeColumnWidth">110</GridLength>
         <!-- The list is flat (device header, column header, rows…) and virtualized, so only rows on
              screen get visuals. Each item draws its slice of the device "card": rounded top on the
              header, side borders on rows, rounded bottom on the last row. -->
@@ -69,13 +71,13 @@
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="110" />
+                        <ColumnDefinition Width="{DynamicResource TypeColumnWidth}" />
                         <ColumnDefinition Width="110" />
                         <ColumnDefinition Width="110" />
                         <ColumnDefinition Width="110" />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="SENSOR" Style="{StaticResource Overline}" />
-                    <TextBlock Grid.Column="1" Text="TYPE" Style="{StaticResource Overline}" />
+                    <TextBlock Grid.Column="1" Text="TYPE" Style="{StaticResource Overline}" ClipToBounds="True" />
                     <TextBlock Grid.Column="2" Text="CURRENT" Style="{StaticResource Overline}" HorizontalAlignment="Right" />
                     <TextBlock Grid.Column="3" Text="MIN" Style="{StaticResource Overline}" HorizontalAlignment="Right" />
                     <TextBlock Grid.Column="4" Text="MAX" Style="{StaticResource Overline}" HorizontalAlignment="Right" />
@@ -90,13 +92,13 @@
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="{DynamicResource TypeColumnWidth}" />
                             <ColumnDefinition Width="110" />
                             <ColumnDefinition Width="110" />
                             <ColumnDefinition Width="110" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="{Binding Name}" FontSize="13" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Grid.Column="1" Text="{Binding Type}" FontSize="12.5" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Grid.Column="1" Text="{Binding Type}" ClipToBounds="True" FontSize="12.5" Foreground="{DynamicResource MutedBrush}" />
                         <TextBlock Grid.Column="2" Text="{Binding Value}" Foreground="{Binding Brush}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Right" />
                         <TextBlock Grid.Column="3" Text="{Binding Min}" FontSize="13" Foreground="{DynamicResource SubTextBrush}" HorizontalAlignment="Right" />
                         <TextBlock Grid.Column="4" Text="{Binding Max}" FontSize="13" Foreground="{DynamicResource SubTextBrush}" HorizontalAlignment="Right" />
@@ -121,11 +123,20 @@
         </Grid.RowDefinitions>
 
         <Grid Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
             <StackPanel>
                 <TextBlock Text="All sensors" Style="{StaticResource H1}" />
-                <TextBlock Text="Every reading your hardware exposes, with session minimum and maximum." Style="{StaticResource Caption}" Margin="0,6,0,0" FontSize="13" />
+                <TextBlock Text="Every reading your hardware exposes, with session minimum and maximum." Style="{StaticResource Caption}" Margin="0,6,0,0" FontSize="13" TextWrapping="Wrap" />
             </StackPanel>
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+            <!-- Beside the title when there's room, under it on a narrow page (SensorsPage.ApplyWidth). -->
+            <StackPanel x:Name="Tools" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="18,0,0,0">
                 <CheckBox Content="Temperatures only" IsChecked="{Binding TempsOnly}" Margin="0,0,18,0" FontSize="13" />
                 <Grid Width="240">
                     <TextBox x:Name="Search" Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged}" Padding="30,6,9,6" />

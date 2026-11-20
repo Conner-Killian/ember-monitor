@@ -21,6 +21,7 @@ public partial class SettingsPage : UserControl
     public SettingsPage()
     {
         InitializeComponent();
+        SettingRows.Split(this);
         Swatches.ItemsSource = ThemeService.AccentPresets;
         var v = Assembly.GetExecutingAssembly().GetName().Version;
         VersionText.Text = $"Ember {v?.Major}.{v?.Minor}.{v?.Build}";

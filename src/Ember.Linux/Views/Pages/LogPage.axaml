@@ -5,12 +5,13 @@
     <UserControl.Resources>
         <DataTemplate x:Key="LogCard">
             <Border Classes="card" Padding="22,18" Margin="0,0,0,14">
-                <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
+                <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
                     <StackPanel VerticalAlignment="Top" Margin="0,0,24,0">
                         <TextBlock Text="{Binding Subtitle}" Classes="overline" />
                         <TextBlock Text="{Binding Title}" Classes="h2" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <!-- Beside the name when there's room, under it on a narrow page (styles below). -->
+                    <StackPanel Classes="chips" Orientation="Horizontal" Spacing="8">
                         <Border Background="{DynamicResource SubtleFillBrush}" CornerRadius="9" Padding="12,8">
                             <StackPanel>
                                 <TextBlock Text="Average" Classes="overline" />
@@ -39,16 +40,30 @@
                             </StackPanel>
                         </Border>
                     </StackPanel>
-                    <c:LogChart Grid.Row="1" Grid.ColumnSpan="2" Height="170" Margin="0,16,0,0"
+                    <c:LogChart Grid.Row="2" Grid.ColumnSpan="2" Height="170" Margin="0,16,0,0"
                                 Bins="{Binding Bins}" FromMinute="{Binding FromMinute}" ToMinute="{Binding ToMinute}"
                                 Warn="{Binding Warn}" Critical="{Binding Critical}" />
                 </Grid>
             </Border>
         </DataTemplate>
     </UserControl.Resources>
+    <UserControl.Styles>
+        <Style Selector="StackPanel.chips">
+            <Setter Property="Grid.Column" Value="1" />
+        </Style>
+        <Style Selector=".narrow StackPanel.chips">
+            <Setter Property="Grid.Row" Value="1" />
+            <Setter Property="Grid.Column" Value="0" />
+            <Setter Property="Grid.ColumnSpan" Value="2" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="Margin" Value="0,12,0,0" />
+        </Style>
+    </UserControl.Styles>
 
-    <ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto" Padding="28,22,28,28">
-        <StackPanel MaxWidth="1180">
+    <!-- Margin on the content, not Padding on the ScrollViewer: Avalonia doesn't take the padding out
+         of the width it gives the content, so the page ran past the window's right edge. -->
+    <ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto">
+        <StackPanel MaxWidth="1236" Margin="28,22,28,28">
             <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,18">
                 <StackPanel>
                     <TextBlock Text="Log" Classes="h1" />

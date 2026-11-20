@@ -14,6 +14,8 @@ public partial class SensorsPage : UserControl
     {
         AvaloniaXamlLoader.Load(this);
         DataContext = _vm;
+        // Narrow page: search under the title and no type column, so sensor names keep their room.
+        SizeChanged += (_, e) => Classes.Set("narrow", e.NewSize.Width - 56 < 720);
     }
 
     public void UpdateSnapshot(SensorSnapshot snap) => _vm.Update(snap);

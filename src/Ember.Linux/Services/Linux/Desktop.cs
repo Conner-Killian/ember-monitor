@@ -36,6 +36,9 @@ public static class Desktop
 
     public static string ToggleCommand => LaunchCommand + " --toggle-overlay";
 
+    /// <summary>Command that switches to an overlay preset (for a keyboard shortcut).</summary>
+    public static string PresetCommand(string presetId) => LaunchCommand + " --preset " + presetId;
+
     private static string Quote(string p) => p.Contains(' ') ? $"\"{p}\"" : p;
 
     /// <summary>Runs a command-line tool and returns its exit code and output (no shell involved).</summary>

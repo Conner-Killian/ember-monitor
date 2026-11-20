@@ -69,6 +69,17 @@ public static class SnapshotTool
     [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool GlobalMemoryStatusEx(ref MEMORYSTATUSEX m);
 
+    private static T? FindChild<T>(DependencyObject root) where T : DependencyObject
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var c = VisualTreeHelper.GetChild(root, i);
+            if (c is T t) return t;
+            if (FindChild<T>(c) is { } found) return found;
+        }
+        return null;
+    }
+
     private static int CountRows(DependencyObject root)
     {
         int n = root is FrameworkElement { DataContext: ViewModels.SensorRowVM } and ContentPresenter ? 1 : 0;
@@ -150,7 +161,14 @@ public static class SnapshotTool
 
         // ---- main window pages ----
         var settings = App.Settings;
-        main.Width = 1280; main.Height = 900;
+        // EMBER_SNAPSHOT_SIZE=WxH renders at another window size (layout checks, e.g. the 980x620 minimum).
+        var size = Environment.GetEnvironmentVariable("EMBER_SNAPSHOT_SIZE")?.Split('x');
+        if (size is [var sw, var sh] && double.TryParse(sw, out var sizeW) && double.TryParse(sh, out var sizeH))
+        {
+            main.MinWidth = main.MinHeight = 0; // a small screen can force the window below its usual minimum
+            main.Width = sizeW; main.Height = sizeH;
+        }
+        else { main.Width = 1280; main.Height = 900; }
         // Longest gap between rendered frames while each page opens for the first time: a freeze
         // shows up as one long gap (60 Hz ≈ 17 ms per frame).
         var ui = new StringBuilder("\nPage switch smoothness (first open, longest frame gap / time in the click handler):\n");
@@ -199,6 +217,16 @@ public static class SnapshotTool
                 await Task.Delay(400);
                 Render(main, Path.Combine(dir, "main_settings_end.png"), true);
                 stp.Scroller.ScrollToHome();
+            }
+            if (nav == "NavOverlay" && (main.FindName("PageHost") as ContentControl)?.Content is Views.Pages.OverlayPage ovp)
+            {
+                // The Presets section, scrolled to the top of the view.
+                var sv = FindChild<ScrollViewer>(ovp);
+                var at = ovp.PresetList.TranslatePoint(new Point(0, 0), ovp);
+                sv?.ScrollToVerticalOffset(Math.Max(0, at.Y - 120));
+                await Task.Delay(400);
+                Render(main, Path.Combine(dir, "main_overlay_presets.png"), true);
+                sv?.ScrollToHome();
             }
             if (nav == "NavSensors")
             {

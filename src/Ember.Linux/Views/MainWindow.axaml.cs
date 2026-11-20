@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private bool _forceClose;
     private readonly TransitioningContentControl _host;
     private readonly Grid _root;
+    private const double BaseMinWidth = 980, BaseMinHeight = 620;
 
     public MainWindow()
     {
@@ -68,6 +69,12 @@ public partial class MainWindow : Window
         var s = App.Settings;
         this.FindControl<ToggleSwitch>("OverlayQuickToggle")!.IsChecked = s.OverlayVisible;
         this.FindControl<LayoutTransformControl>("ScaleHost")!.LayoutTransform = new ScaleTransform(s.UiScale, s.UiScale);
+        // The pages are laid out for at least 980 × 620. A larger interface scale leaves them less room,
+        // so the window's minimum grows with it (but never beyond the screen).
+        var wa = Screens.Primary?.WorkingArea;
+        double ps = Screens.Primary?.Scaling ?? 1;
+        MinWidth = Math.Min(BaseMinWidth * s.UiScale, wa is { } a ? a.Width / ps : double.PositiveInfinity);
+        MinHeight = Math.Min(BaseMinHeight * s.UiScale, wa is { } b ? b.Height / ps : double.PositiveInfinity);
         this.FindControl<TextBlock>("HotkeyHint")!.Text = OverlayPage.HotkeySummary();
         SyncUpdate();
     }

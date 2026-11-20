@@ -202,6 +202,37 @@ try
     var savedCfg = File.ReadAllText(Path.Combine(cfgDir, "settings.json"));
     Check(oldCfg.LogViewHours == 14 * 24 && LogViewModel.ViewHours(oldCfg) == 14 * 24 && !savedCfg.Contains("LogViewDays") && savedCfg.Contains("\"LogViewHours\": 336"),
           "1.2.0 chart length (14 days) carries over as 336 hours");
+    // Overlay presets: capture → change → apply restores; saved and loaded intact; hotkey clashes found.
+    var ps = new AppSettings { OverlayLayout = OverlayLayout.Card, OverlayAnchor = OverlayAnchor.BottomLeft, OverlayMonitor = "\\\\.\\DISPLAY2",
+                               OverlayShowRam = true, OverlayScale = 1.3 };
+    ps.Drives.Add(new DriveOverlayOption { Id = "/nvme/0", Show = false, Label = "Games" });
+    var desk = OverlayPreset.Capture(ps, "Desk");
+    desk.Hotkey = new List<int> { 0xA2, 0x31 }; // Left Ctrl + 1
+    ps.OverlayPresets.Add(desk);
+    Check(desk.Matches(ps), "a preset matches the setup it was saved from");
+    ps.OverlayLayout = OverlayLayout.Pill; ps.OverlayAnchor = OverlayAnchor.Free; ps.OverlayFreeX = 100; ps.OverlayFreeY = 50;
+    ps.OverlayShowRam = false; ps.Drives[0].Show = true; ps.OverlayVisible = false;
+    var game = OverlayPreset.Capture(ps, "Game");
+    ps.OverlayPresets.Add(game);
+    Check(!desk.Matches(ps) && game.Matches(ps), "after changing the overlay, only the new preset matches");
+    desk.ApplyTo(ps);
+    Check(desk.Matches(ps) && ps.OverlayLayout == OverlayLayout.Card && ps.OverlayAnchor == OverlayAnchor.BottomLeft && ps.OverlayShowRam
+          && !ps.Drives[0].Show && ps.OverlayVisible, "applying a preset restores style, position, readings and drive choices, and shows the overlay");
+    Check(ps.HotkeyOwner(new[] { 0x31, 0xA2 }, game.Id) == "Desk" && ps.HotkeyOwner(new[] { 0xA2, 0x31 }, desk.Id) == null
+          && ps.HotkeyOwner(new[] { 0xA3, 0xA5 }, game.Id) == "Show / hide overlay" && ps.HotkeyOwner(new[] { 0xA3, 0xA5 }, "") == null,
+          "hotkey clashes: found for other presets and the show / hide key, not for the same preset");
+    Check(desk.Describe("Display 2") == "Card · Display 2, bottom left · CPU, GPU, RAM" && game.Describe("Display 1").Contains("where you placed it"),
+          $"preset summary: \"{desk.Describe("Display 2")}\"");
+    var presetDir = Path.Combine(dir, "presets");
+    Directory.CreateDirectory(presetDir);
+    Environment.SetEnvironmentVariable("EMBER_CONFIG_DIR", presetDir);
+    ps.OverlayPresets.Add(new OverlayPreset { Id = desk.Id, Name = "" }); // damaged: duplicate id, no name
+    ps.Save();
+    var back = AppSettings.Load();
+    Check(back.OverlayPresets.Count == 3 && back.OverlayPresets[0].Name == "Desk" && back.OverlayPresets[0].Hotkey.SequenceEqual(new[] { 0xA2, 0x31 })
+          && back.OverlayPresets[1].FreeX == 100 && back.OverlayPresets[1].Anchor == OverlayAnchor.Free && double.IsNaN(back.OverlayPresets[0].FreeX)
+          && back.OverlayPresets[2].Id != desk.Id && back.OverlayPresets[2].Name == "Preset",
+          "presets survive saving and loading (unset position kept, duplicate id and empty name repaired)");
     Environment.SetEnvironmentVariable("EMBER_CONFIG_DIR", null);
     Check(LogAnalysis.Duration(0) == "Never", "no time above warning reads \"Never\"");
 
@@ -219,6 +250,27 @@ try
         long msMonth = sw.ElapsedMilliseconds;
         int yrMin = yr.Single(s => s.Series.Key == "cpu").Points.Length, moMin = mo.Single(s => s.Series.Key == "cpu").Points.Length;
         Check(msYear < 1000 && msMonth < 150 && yrMin > moMin * 10, $"reading a 1-year log: whole year {msYear} ms ({yrMin:N0} min), last 30 days {msMonth} ms ({moMin:N0} min)");
+        // The Log page's whole job for the 1-year view (runs once a minute while the page is open).
+        var cfgY = new AppSettings { LogRetentionDays = 365 };
+        LogViewModel.Build(y, 365 * 24, cfgY, e3); // warm up
+        long alloc0 = GC.GetAllocatedBytesForCurrentThread(); sw.Restart();
+        var pageYear = LogViewModel.Build(y, 365 * 24, cfgY, e3);
+        long msPage = sw.ElapsedMilliseconds, mbPage = (GC.GetAllocatedBytesForCurrentThread() - alloc0) / (1024 * 1024);
+        Check(pageYear.Cards.Count == 5 && pageYear.Days.Count >= 300 && msPage < 1500 && mbPage < 120,
+              $"Log page for a full year: {msPage} ms, {mbPage} MB allocated, {pageYear.Days.Count} daily rows");
+        // Daily summary matches a straightforward per-day grouping.
+        var cpuYear = yr.Single(s => s.Series.Key == "cpu").Points;
+        var simple = cpuYear.GroupBy(p => p.LocalTime.Date).OrderByDescending(g => g.Key)
+                            .Select(g => (g.Key, g.Min(p => p.Min), g.Average(p => p.Avg), g.Max(p => p.Max), g.Count())).ToList();
+        var fast = LogAnalysis.Daily(cpuYear);
+        Check(fast.Count == simple.Count && fast.Zip(simple).All(z => z.First.Date == z.Second.Key && z.First.Min == z.Second.Item2 &&
+              Math.Abs(z.First.Avg - z.Second.Item3) < 1e-9 && z.First.Max == z.Second.Item4 && z.First.Minutes == z.Second.Item5),
+              $"daily summary matches a plain per-day grouping ({fast.Count} days)");
+        // Minutes not yet written to disk are part of what's read.
+        var tail = e3.AddMinutes(3);
+        y.Add(Snap(61, 51, 40, 38, 35), tail);
+        var unsaved = y.Read(TemperatureLog.Minute(tail) - 5, TemperatureLog.Minute(tail)).Single(s => s.Series.Key == "cpu").Points;
+        Check(unsaved[^1].Minute == TemperatureLog.Minute(tail) && unsaved[^1].Max == 61, "unsaved minutes show before they're written");
     }
 
     // 10. Seeded realistic week (used for the UI): readable and plausible.

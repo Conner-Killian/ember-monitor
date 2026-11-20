@@ -17,6 +17,7 @@ public partial class MainWindow : Window
     private SettingsPage? _settings;
     private LogPage? _log;
     private bool _forceClose, _closeNow;
+    private const double BaseMinWidth = 980, BaseMinHeight = 620;
 
     public MainWindow()
     {
@@ -60,6 +61,11 @@ public partial class MainWindow : Window
         var s = App.Settings;
         OverlayQuickToggle.IsChecked = s.OverlayVisible;
         HotkeyHint.Text = $"Toggle with {HotkeyService.Describe(s.Hotkey)}";
+        // The pages are laid out for at least 980 × 620. A larger interface size leaves them less room,
+        // so the window's minimum grows with it (but never beyond the screen).
+        var wa = SystemParameters.WorkArea;
+        MinWidth = Math.Min(BaseMinWidth * s.UiScale, wa.Width);
+        MinHeight = Math.Min(BaseMinHeight * s.UiScale, wa.Height);
         SyncUpdate();
     }
 

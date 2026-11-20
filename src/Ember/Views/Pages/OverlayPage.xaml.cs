@@ -31,8 +31,10 @@ public partial class OverlayPage : UserControl
     public OverlayPage()
     {
         InitializeComponent();
+        SettingRows.Split(this);
         Preview.DataContext = _previewVm;
         DriveList.ItemsSource = _drives;
+        PresetList.ItemsSource = _presets;
         Load();
         App.SettingsChanged += OnSettingsChanged;
         Unloaded += (_, _) => StopRecording(false);
@@ -71,7 +73,7 @@ public partial class OverlayPage : UserControl
         OpacityText.Text = $"{s.OverlayOpacity * 100:0}%";
         ScaleText.Text = $"{s.OverlayScale * 100:0}%";
         DrivesPanel.Visibility = s.OverlayShowDrives ? Visibility.Visible : Visibility.Collapsed;
-        if (!_recording) HotkeyText.Text = HotkeyService.Describe(s.Hotkey);
+        if (!(_recording && _recRow == null)) HotkeyText.Text = HotkeyService.Describe(s.Hotkey);
         LockText.Text = s.OverlayLocked ? "Unlock to move" : "Lock in place";
         LockIcon.Text = s.OverlayLocked ? "" : "";
 
@@ -84,9 +86,123 @@ public partial class OverlayPage : UserControl
         MonitorCombo.SelectedIndex = Math.Max(0, idx);
         MonitorCombo.Visibility = screens.Length > 1 ? Visibility.Visible : Visibility.Collapsed;
 
+        LoadPresets();
+
         Preview.ApplyAppearance();
         _previewVm.Update(App.Sensors?.Latest);
         _loading = false;
+    }
+
+    // ------------------------------------------------------------------ presets
+
+    private readonly System.Collections.ObjectModel.ObservableCollection<PresetRow> _presets = new();
+
+    private void LoadPresets()
+    {
+        var s = App.Settings;
+        CollectionSync.Sync(_presets, s.OverlayPresets, p => p.Id, r => r.Id,
+            p => new PresetRow { Id = p.Id, Name = p.Name },
+            (row, p) =>
+            {
+                row.Summary = p.Describe(DisplayName(p));
+                row.IsActive = s.OverlayVisible && p.Matches(s);
+                row.HasHotkey = p.Hotkey.Count > 0;
+                if (!row.IsRecording) row.HotkeyText = p.Hotkey.Count > 0 ? HotkeyService.Describe(p.Hotkey) : "No hotkey";
+            });
+        PresetEmpty.Visibility = _presets.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>"Display 2" for the display a preset puts the overlay on.</summary>
+    private static string DisplayName(OverlayPreset p)
+    {
+        var screens = Screen.AllScreens;
+        var sc = OverlayWindow.FindScreen(p.Monitor, p.MonitorBounds);
+        int i = sc == null ? -1 : Array.FindIndex(screens, x => x.DeviceName == sc.DeviceName);
+        if (i < 0 && p.Monitor == null) i = Array.FindIndex(screens, x => x.Primary); // never chose a display: the main one
+        return i >= 0 ? $"Display {i + 1}" : "a display that isn't connected";
+    }
+
+    private static OverlayPreset? PresetOf(object sender) =>
+        sender is FrameworkElement { DataContext: PresetRow row } ? App.Settings.OverlayPresets.FirstOrDefault(p => p.Id == row.Id) : null;
+    private static PresetRow? RowOf(object sender) => (sender as FrameworkElement)?.DataContext as PresetRow;
+
+    private void PresetAdd_Click(object sender, RoutedEventArgs e)
+    {
+        var s = App.Settings;
+        int n = s.OverlayPresets.Count + 1;
+        while (s.OverlayPresets.Any(p => p.Name == $"Preset {n}")) n++;
+        s.OverlayPresets.Add(OverlayPreset.Capture(s, $"Preset {n}"));
+        Commit();
+        // Straight into naming it.
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () =>
+        {
+            if (PresetList.ItemContainerGenerator.ContainerFromIndex(_presets.Count - 1) is ContentPresenter cp &&
+                cp.ContentTemplate?.FindName("NameBox", cp) is TextBox box)
+            {
+                box.Focus();
+                box.SelectAll();
+            }
+        });
+    }
+
+    private void PresetApply_Click(object sender, RoutedEventArgs e)
+    {
+        if (PresetOf(sender) is { } p) App.Current.ApplyPreset(p.Id);
+    }
+
+    private void PresetUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        if (PresetOf(sender) is not { } p) return;
+        p.CopyFrom(App.Settings);
+        Commit();
+    }
+
+    private void PresetDelete_Click(object sender, RoutedEventArgs e)
+    {
+        if (PresetOf(sender) is not { } p) return;
+        var ok = MessageBox.Show(Window.GetWindow(this)!, $"Delete the preset \"{p.Name}\"?", "Delete preset",
+            MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel);
+        if (ok != MessageBoxResult.OK) return;
+        StopRecording(false);
+        App.Settings.OverlayPresets.Remove(p);
+        Commit();
+    }
+
+    private void PresetName_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Enter) { SavePresetName(sender); System.Windows.Input.Keyboard.ClearFocus(); }
+        else if (e.Key == System.Windows.Input.Key.Escape && RowOf(sender) is { } row && PresetOf(sender) is { } p) { row.Name = p.Name; System.Windows.Input.Keyboard.ClearFocus(); }
+    }
+
+    private void PresetName_LostFocus(object sender, RoutedEventArgs e) => SavePresetName(sender);
+
+    private void SavePresetName(object sender)
+    {
+        if (RowOf(sender) is not { } row || PresetOf(sender) is not { } p) return;
+        var name = row.Name.Trim();
+        if (name.Length == 0) { row.Name = p.Name; return; } // a preset always has a name
+        if (name == p.Name) return;
+        p.Name = name;
+        row.Name = name;
+        Commit();
+    }
+
+    private void PresetClearKey_Click(object sender, RoutedEventArgs e)
+    {
+        if (PresetOf(sender) is not { } p) return;
+        StopRecording(false);
+        p.Hotkey.Clear();
+        if (RowOf(sender) is { } row) row.Note = "";
+        Commit();
+    }
+
+    private void PresetRecord_Click(object sender, RoutedEventArgs e)
+    {
+        if (RowOf(sender) is not { } row) return;
+        bool same = _recording && _recRow == row;
+        StopRecording(false);
+        if (same) return; // the button read "Cancel"
+        StartRecording(row);
     }
 
     public void UpdateSnapshot(SensorSnapshot snap)
@@ -197,14 +313,35 @@ public partial class OverlayPage : UserControl
 
     // ------------------------------------------------------------------ hotkey recording
 
+    // One recorder for the show / hide hotkey (_recRow == null) and the presets' (_recRow = that preset).
+    private PresetRow? _recRow;
+
     private void Record_Click(object sender, RoutedEventArgs e)
     {
-        if (_recording) { StopRecording(false); return; }
+        bool wasMain = _recording && _recRow == null;
+        StopRecording(false);
+        if (!wasMain) StartRecording(null);
+    }
+
+    private void ShowRecording(string text)
+    {
+        if (_recRow != null) _recRow.HotkeyText = text;
+        else HotkeyText.Text = text;
+    }
+
+    private void StartRecording(PresetRow? row)
+    {
         _recording = true;
+        _recRow = row;
         _recDown.Clear(); _recCombo.Clear();
-        HotkeyText.Text = "Press keys…";
-        RecordButton.Content = "Cancel";
-        HotkeyBox.BorderBrush = (System.Windows.Media.Brush)FindResource("AccentBrush");
+        HotkeyNote.Visibility = Visibility.Collapsed;
+        if (row != null) { row.IsRecording = true; row.Note = ""; }
+        else
+        {
+            RecordButton.Content = "Cancel";
+            HotkeyBox.BorderBrush = (System.Windows.Media.Brush)FindResource("AccentBrush");
+        }
+        ShowRecording("Press keys…");
         App.Hotkey.Recorder = OnRecordKey;
         // Recording swallows every key on the PC, so it must end the moment Ember isn't in front
         // (otherwise the next key typed in another app would silently become the hotkey).
@@ -229,7 +366,7 @@ public partial class OverlayPage : UserControl
             if (vk == 0x1B && _recCombo.Count == 0) { StopRecording(false); return; } // Esc
             _recDown.Add(vk);
             _recCombo.Add(vk);
-            HotkeyText.Text = HotkeyService.Describe(_recCombo) + " …";
+            ShowRecording(HotkeyService.Describe(_recCombo) + " …");
         }
         else
         {
@@ -249,20 +386,46 @@ public partial class OverlayPage : UserControl
             _recWindow.IsVisibleChanged -= RecordWindow_Deactivated;
             _recWindow = null;
         }
+        var row = _recRow;
+        _recRow = null;
         RecordButton.Content = "Change";
         HotkeyBox.BorderBrush = (System.Windows.Media.Brush)FindResource("InputBorderBrush");
+        if (row != null) row.IsRecording = false;
+
         if (save && _recCombo.Count > 0)
         {
-            App.Settings.Hotkey = _recCombo.ToList();
-            Commit();
+            var s = App.Settings;
+            var preset = row == null ? null : s.OverlayPresets.FirstOrDefault(p => p.Id == row.Id);
+            // The same keys can't do two things: say who has them instead of saving.
+            if (s.HotkeyOwner(_recCombo, preset?.Id ?? "") is string owner)
+            {
+                var msg = $"{HotkeyService.Describe(_recCombo)} is already used by \"{owner}\". Pick other keys.";
+                if (row != null) row.Note = msg;
+                else { HotkeyNote.Text = msg; HotkeyNote.Visibility = Visibility.Visible; }
+            }
+            else
+            {
+                if (preset != null) preset.Hotkey = _recCombo.ToList();
+                else if (row == null) s.Hotkey = _recCombo.ToList();
+                Commit();
+            }
         }
         HotkeyText.Text = HotkeyService.Describe(App.Settings.Hotkey);
+        LoadPresets();
     }
 
     private void ResetHotkey_Click(object sender, RoutedEventArgs e)
     {
         StopRecording(false);
-        App.Settings.Hotkey = new List<int> { 0xA3, 0xA5 };
+        var def = new List<int> { 0xA3, 0xA5 };
+        if (App.Settings.HotkeyOwner(def, "") is string owner)
+        {
+            HotkeyNote.Text = $"{HotkeyService.Describe(def)} is already used by \"{owner}\". Change that preset's hotkey first.";
+            HotkeyNote.Visibility = Visibility.Visible;
+            return;
+        }
+        HotkeyNote.Visibility = Visibility.Collapsed;
+        App.Settings.Hotkey = def;
         Commit();
     }
 }

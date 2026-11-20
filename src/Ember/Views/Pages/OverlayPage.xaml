@@ -22,12 +22,16 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="28,22,28,28">
         <StackPanel MaxWidth="980" HorizontalAlignment="Stretch">
             <Grid>
-                <StackPanel>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Margin="0,0,20,0">
                     <TextBlock Text="Overlay" Style="{StaticResource H1}" />
                     <TextBlock Text="A small always-on-top readout for your desktop and games running in borderless or windowed mode."
-                               Style="{StaticResource Caption}" FontSize="13" Margin="0,6,0,0" />
+                               Style="{StaticResource Caption}" FontSize="13" Margin="0,6,0,0" TextWrapping="Wrap" />
                 </StackPanel>
-                <CheckBox x:Name="ShowToggle" Style="{StaticResource ToggleSwitch}" HorizontalAlignment="Right" VerticalAlignment="Center" Click="Changed" />
+                <CheckBox x:Name="ShowToggle" Grid.Column="1" Style="{StaticResource ToggleSwitch}" HorizontalAlignment="Right" VerticalAlignment="Center" Click="Changed" />
             </Grid>
 
             <!-- ===== Preview + style ===== -->
@@ -80,6 +84,7 @@
                         <TextBlock Text="Show / hide overlay" Style="{StaticResource RowTitle}" />
                         <TextBlock Text="Works everywhere, even in games. Left and right modifier keys count as different keys, and you can use modifiers on their own (e.g. Right Ctrl + Right Alt)."
                                    Style="{StaticResource RowDesc}" />
+                        <TextBlock x:Name="HotkeyNote" Style="{StaticResource RowDesc}" Foreground="{DynamicResource WarmBrush}" Visibility="Collapsed" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                         <Border x:Name="HotkeyBox" Background="{DynamicResource InputBrush}" BorderBrush="{DynamicResource InputBorderBrush}"
@@ -93,6 +98,79 @@
                     </StackPanel>
                 </Grid>
             </Border>
+
+            <!-- ===== Presets ===== -->
+            <TextBlock Text="Presets" Style="{StaticResource SectionTitle}" />
+            <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="2,-4,0,10"
+                       Text="Save the overlay's current style, position, readings and look as a preset. Switch to it here, from the tray menu, or with its own hotkey. Pressing a preset's hotkey while that preset is showing hides the overlay." />
+            <ItemsControl x:Name="PresetList" Focusable="False">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource SettingRow}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <!-- Name (editable) and what the preset shows -->
+                                <StackPanel Margin="0,0,20,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBox x:Name="NameBox" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" MinWidth="200" MaxLength="40"
+                                                 FontSize="14" LostFocus="PresetName_LostFocus" KeyDown="PresetName_KeyDown" ToolTip="Rename" />
+                                        <Border Background="{DynamicResource AccentSoftBrush}" CornerRadius="4" Padding="7,2" Margin="10,0,0,0" VerticalAlignment="Center"
+                                                Visibility="{Binding IsActive, Converter={StaticResource BoolToVis}}">
+                                            <TextBlock Text="Showing" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentLightBrush}" />
+                                        </Border>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding Summary}" Style="{StaticResource RowDesc}" Margin="2,6,0,0" />
+                                </StackPanel>
+                                <Button Grid.Column="1" Style="{StaticResource AccentButton}" Content="Switch to it" VerticalAlignment="Top" MinWidth="110"
+                                        Click="PresetApply_Click" />
+                                <!-- Hotkey and maintenance -->
+                                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
+                                    <Border x:Name="KeyBox" Background="{DynamicResource InputBrush}" BorderBrush="{DynamicResource InputBorderBrush}"
+                                            BorderThickness="1" CornerRadius="6" Padding="12,6" MinWidth="150" Margin="0,0,8,0">
+                                        <TextBlock Text="{Binding HotkeyText}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                                    </Border>
+                                    <Button Content="{Binding RecordText}" Click="PresetRecord_Click" Margin="0,0,6,0" />
+                                    <Button Style="{StaticResource GhostButton}" ToolTip="Remove the hotkey" Click="PresetClearKey_Click"
+                                            Visibility="{Binding HasHotkey, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock Text="&#xE711;" Style="{StaticResource Icon}" FontSize="12" />
+                                    </Button>
+                                </StackPanel>
+                                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,12,0,0" HorizontalAlignment="Right">
+                                    <Button Content="Update" ToolTip="Replace this preset with the overlay's current setup" Click="PresetUpdate_Click" Margin="0,0,6,0" />
+                                    <Button Style="{StaticResource GhostButton}" ToolTip="Delete this preset" Click="PresetDelete_Click">
+                                        <TextBlock Text="&#xE74D;" Style="{StaticResource Icon}" FontSize="14" />
+                                    </Button>
+                                </StackPanel>
+                                <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="{Binding Note}" Style="{StaticResource RowDesc}" Foreground="{DynamicResource WarmBrush}"
+                                           Margin="2,8,0,0" Visibility="{Binding HasNote, Converter={StaticResource BoolToVis}}" />
+                            </Grid>
+                        </Border>
+                        <DataTemplate.Triggers>
+                            <DataTrigger Binding="{Binding IsRecording}" Value="True">
+                                <Setter TargetName="KeyBox" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                            </DataTrigger>
+                        </DataTemplate.Triggers>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Border x:Name="PresetEmpty" Style="{StaticResource SettingRow}">
+                <TextBlock Style="{StaticResource RowDesc}" Margin="0"
+                           Text="No presets yet. Set the overlay up the way you want it (style, display, position, readings), then save it here. Make as many as you like." />
+            </Border>
+            <Button HorizontalAlignment="Left" Margin="0,6,0,0" Click="PresetAdd_Click">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE710;" Style="{StaticResource Icon}" FontSize="12" Margin="0,0,8,0" />
+                    <TextBlock Text="Save current setup as a preset" />
+                </StackPanel>
+            </Button>
 
             <!-- ===== Position ===== -->
             <TextBlock Text="Position" Style="{StaticResource SectionTitle}" />

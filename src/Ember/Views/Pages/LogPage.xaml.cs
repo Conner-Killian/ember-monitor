@@ -22,6 +22,21 @@ public partial class LogPage : UserControl
         _refresh = new DispatcherTimer(TimeSpan.FromSeconds(60), DispatcherPriority.Background, (_, _) => Refresh(), Dispatcher);
         Loaded += (_, _) => { Refresh(); _refresh.Start(); App.SettingsChanged += OnSettings; App.LogChanged += Refresh; };
         Unloaded += (_, _) => { _refresh.Stop(); App.SettingsChanged -= OnSettings; App.LogChanged -= Refresh; };
+        SizeChanged += (_, e) => ApplyWidth(e.NewSize.Width);
+    }
+
+    private bool? _narrow;
+
+    /// <summary>Narrow page: each card's readings go under the component's name instead of squeezing it out.</summary>
+    private void ApplyWidth(double pageWidth)
+    {
+        bool narrow = pageWidth - 56 < 720; // 56 = the page's side padding
+        if (narrow == _narrow) return;
+        _narrow = narrow;
+        Resources["ChipsRow"] = narrow ? 1 : 0;
+        Resources["ChipsColumn"] = narrow ? 0 : 1;
+        Resources["ChipsColumnSpan"] = narrow ? 2 : 1;
+        Resources["ChipsMargin"] = narrow ? new Thickness(0, 12, 0, 0) : new Thickness(0);
     }
 
     private string _lastSettings = "";
@@ -42,9 +57,17 @@ public partial class LogPage : UserControl
         // Chart length: standard steps up to what the log keeps (1 hour … 1 year).
         int hours = LogViewModel.ViewHours(s);
         _syncingRange = true;
-        RangeCombo.ItemsSource = LogViewModel.ViewOptions(s.LogRetentionDays)
-            .Select(h => new ComboBoxItem { Content = LogViewModel.RangeText(h), Tag = h }).ToList();
-        RangeCombo.SelectedItem = RangeCombo.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (int)i.Tag == hours);
+        // Rebuild the list only when the choices change: the page refreshes every minute, and
+        // replacing the items would close the dropdown under the pointer.
+        var options = LogViewModel.ViewOptions(s.LogRetentionDays);
+        var optionsKey = string.Join(",", options);
+        if (optionsKey != _rangeOptions)
+        {
+            _rangeOptions = optionsKey;
+            RangeCombo.ItemsSource = options.Select(h => new ComboBoxItem { Content = LogViewModel.RangeText(h), Tag = h }).ToList();
+        }
+        var selected = RangeCombo.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (int)i.Tag == hours);
+        if (RangeCombo.SelectedItem != selected) RangeCombo.SelectedItem = selected;
         _syncingRange = false;
 
         var log = App.Log;
@@ -67,7 +90,15 @@ public partial class LogPage : UserControl
         RangeHost.Visibility = Visibility.Visible;
         LogView view;
         try { view = await Task.Run(() => LogViewModel.Build(log, hours, s, DateTime.UtcNow)); }
-        catch (Exception ex) { App.LogError("Log page: " + ex); StatusText.Text = "Couldn't read the log: " + ex.Message; return; }
+        catch (Exception ex)
+        {
+            // A refresh that's been overtaken (e.g. the log was just turned off or deleted, closing the
+            // file mid-read) must not cover the newer page with its error.
+            if (version != _version) return;
+            App.LogError("Log page: " + ex);
+            StatusText.Text = "Couldn't read the log: " + ex.Message;
+            return;
+        }
         if (version != _version) return; // a newer refresh started meanwhile
 
         StatusText.Text = $"{view.Status} · keeps {LogViewModel.DaysText(s.LogRetentionDays)} · {LogViewModel.SizeText(log.FileBytes)} on disk";
@@ -125,6 +156,7 @@ public partial class LogPage : UserControl
     }
 
     private bool _syncingRange;
+    private string _rangeOptions = "";
     private void Range_Changed(object sender, SelectionChangedEventArgs e)
     {
         if (_syncingRange || RangeCombo.SelectedItem is not ComboBoxItem { Tag: int hours } || hours == LogViewModel.ViewHours(App.Settings)) return;

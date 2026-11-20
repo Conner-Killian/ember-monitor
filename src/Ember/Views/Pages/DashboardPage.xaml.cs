@@ -15,6 +15,23 @@ public partial class DashboardPage : UserControl
         _vm.Cpu.Sub = "PROCESSOR";
         _vm.Gpu.Sub = "GRAPHICS";
         DataContext = _vm;
+        SizeChanged += (_, e) => ApplyWidth(e.NewSize.Width);
+    }
+
+    private bool? _stacked;
+
+    /// <summary>
+    /// The processor and graphics cards each need about 430 px for the gauge plus two columns of
+    /// readings. Narrower (small window, or a larger interface size) they go one above the other
+    /// instead of squeezing the readings.
+    /// </summary>
+    private void ApplyWidth(double pageWidth)
+    {
+        bool stacked = pageWidth - 56 < 880; // 56 = the page's side padding
+        if (stacked == _stacked) return;
+        _stacked = stacked;
+        HeroGrid.Columns = stacked ? 1 : 2;
+        GpuCard.Margin = stacked ? new Thickness(8, 16, 8, 0) : new Thickness(8, 0, 8, 0);
     }
 
     public void UpdateSnapshot(SensorSnapshot snap)

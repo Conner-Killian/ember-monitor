@@ -48,13 +48,22 @@ public sealed class HotkeyService : IDisposable
     private System.Threading.Thread? _thread;
     private uint _threadId;
     private readonly HashSet<int> _down = new();
-    private HashSet<int> _combo = new();
-    private bool _chordDirty;     // another key was pressed during a modifier-only chord
-    private bool _comboArmed;     // combo fully held at some point
-    private bool _firedThisChord;
+    private List<Binding> _bindings = new();
 
-    /// <summary>Raised on the hook thread; subscribers marshal to the UI themselves.</summary>
-    public event Action? Pressed;
+    /// <summary>One hotkey: the main show / hide key (id "") or a preset's (its id).</summary>
+    private sealed class Binding
+    {
+        public required string Id { get; init; }
+        public required HashSet<int> Combo { get; init; }
+        public bool Dirty;  // another key was pressed during a modifier-only chord
+        public bool Armed;  // combo fully held at some point
+        public bool Fired;
+        public bool ModifierOnly => Combo.All(IsModifier);
+        public void Reset() => Dirty = Armed = Fired = false;
+    }
+
+    /// <summary>Raised on the hook thread with the hotkey's id ("" = show / hide, else a preset id); subscribers marshal to the UI themselves.</summary>
+    public event Action<string>? Pressed;
 
     /// <summary>
     /// When set, keystrokes are swallowed and routed here instead of triggering (the "record hotkey"
@@ -90,20 +99,22 @@ public sealed class HotkeyService : IDisposable
         ready.Wait(3000);
     }
 
-    public void SetCombo(IEnumerable<int> vks)
+    /// <summary>The hotkeys to watch: id → key combination ("" = show / hide overlay, else a preset id). Empty combos are skipped.</summary>
+    public void SetBindings(IEnumerable<(string id, IEnumerable<int> combo)> bindings)
     {
+        var list = bindings.Select(b => new Binding { Id = b.id, Combo = new HashSet<int>(b.combo) })
+                           .Where(b => b.Combo.Count > 0).ToList();
         lock (_lock)
         {
-            _combo = new HashSet<int>(vks);
+            // Unchanged? Keep the chord state (settings are re-applied on every change).
+            if (list.Count == _bindings.Count && list.Zip(_bindings).All(z => z.First.Id == z.Second.Id && z.First.Combo.SetEquals(z.Second.Combo))) return;
+            _bindings = list;
             _down.Clear();
-            _comboArmed = _chordDirty = _firedThisChord = false;
         }
     }
 
     public static bool IsModifier(int vk) => vk is 0xA0 or 0xA1 or 0xA2 or 0xA3 or 0xA4 or 0xA5 or 0x5B or 0x5C
                                                  or 0x10 or 0x11 or 0x12;
-
-    private bool ComboIsModifierOnly => _combo.Count > 0 && _combo.All(IsModifier);
 
     private IntPtr HookProc(int nCode, IntPtr wParam, IntPtr lParam)
     {
@@ -127,58 +138,50 @@ public sealed class HotkeyService : IDisposable
                     _ui.BeginInvoke(rec, vk, down);
                     return (IntPtr)1;
                 }
-                bool fire = false;
+                string? fired = null;
                 lock (_lock)
                 {
-                    if (_combo.Count > 0)
-                        try { fire = Handle(vk, down, up); } catch { }
+                    if (_bindings.Count > 0)
+                        try { fired = Handle(vk, down, up); } catch { }
                 }
-                if (fire) Pressed?.Invoke();
+                if (fired != null) Pressed?.Invoke(fired);
             }
         }
         return CallNextHookEx(_hook, nCode, wParam, lParam);
     }
 
-    /// <summary>Tracks the chord; returns true when the hotkey should fire.</summary>
-    private bool Handle(int vk, bool down, bool up)
+    /// <summary>Tracks the chord; returns the id of the hotkey that should fire, if any.</summary>
+    private string? Handle(int vk, bool down, bool up)
     {
+        string? fired = null;
         if (down)
         {
             // A key released while another desktop had input (lock screen, UAC prompt, Ctrl+Alt+Del)
             // never sends us its key-up. Drop keys that aren't physically held any more, otherwise
             // one stale key would block the hotkey until Ember restarts.
             _down.RemoveWhere(k => k != vk && (GetAsyncKeyState(k) & 0x8000) == 0);
-            if (_down.Count == 0) _comboArmed = _chordDirty = _firedThisChord = false;
+            if (_down.Count == 0) foreach (var b in _bindings) b.Reset();
 
             bool repeat = _down.Contains(vk);
             _down.Add(vk);
-            if (repeat) return false;
+            if (repeat) return null;
 
-            if (!_combo.Contains(vk)) { _chordDirty = true; return false; }
-
-            if (_down.SetEquals(_combo))
+            foreach (var b in _bindings)
             {
-                _comboArmed = true;
-                if (!ComboIsModifierOnly && !_firedThisChord)
-                {
-                    _firedThisChord = true;
-                    return true;
-                }
+                if (!b.Combo.Contains(vk)) { b.Dirty = true; continue; }
+                if (!_down.SetEquals(b.Combo)) continue;
+                b.Armed = true;
+                if (!b.ModifierOnly && !b.Fired) { b.Fired = true; fired ??= b.Id; }
             }
         }
         else if (up)
         {
-            bool fire = false;
-            if (ComboIsModifierOnly && _comboArmed && !_chordDirty && !_firedThisChord && _combo.Contains(vk))
-            {
-                _firedThisChord = true;
-                fire = true;
-            }
+            foreach (var b in _bindings)
+                if (b.ModifierOnly && b.Armed && !b.Dirty && !b.Fired && b.Combo.Contains(vk)) { b.Fired = true; fired ??= b.Id; }
             _down.Remove(vk);
-            if (_down.Count == 0) { _comboArmed = _chordDirty = _firedThisChord = false; }
-            return fire;
+            if (_down.Count == 0) foreach (var b in _bindings) b.Reset();
         }
-        return false;
+        return fired;
     }
 
     // ---------------- Display helpers ----------------

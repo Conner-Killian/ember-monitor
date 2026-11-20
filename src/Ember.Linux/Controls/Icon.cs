@@ -50,6 +50,9 @@ public sealed class Icon : Control
         ["keyboard"] = "M2 6h20v12H2z M6 10h.01 M10 10h.01 M14 10h.01 M18 10h.01 M7 14h10",
         ["folder"] = "M3 6h6l2 2h10v11H3z",
         ["check"] = "M5 12.5l4.5 4.5L19 7.5",
+        ["close"] = "M6 6l12 12 M18 6L6 18",
+        ["plus"] = "M12 5v14 M5 12h14",
+        ["trash"] = "M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13 M10 11v6 M14 11v6",
     };
 
     private static readonly Dictionary<string, Geometry> Cache = new();

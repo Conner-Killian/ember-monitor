@@ -18,13 +18,20 @@ Then open **Ember** from your app menu. It starts on login by default (Settings 
 To uninstall: `sudo apt remove ember-monitor`, `sudo dnf remove ember-monitor` or `sudo pacman -R ember-monitor`.
 Your settings stay in `~/.config/Ember` until you delete that folder.
 
-## The overlay hotkey
+## Hotkeys
+
+The overlay's show / hide hotkey (**Right Ctrl + Right Alt** by default) and each overlay preset's
+hotkey work as on Windows: set them on the Overlay page, with left and right modifiers told apart and
+modifier-only combinations allowed.
 
 | Session | How it works |
 |---|---|
-| X11 (Xfce, Cinnamon, MATE, "GNOME on Xorg"…) | Same as on Windows: **Right Ctrl + Right Alt** by default, changeable on the Overlay page. |
-| GNOME on Wayland (Debian/Ubuntu/Fedora default) | Wayland doesn't let apps watch the keyboard, so Ember registers a GNOME keyboard shortcut for you. Set it on the Overlay page; it needs a regular key, e.g. **Super + Shift + E**. |
-| KDE Plasma on Wayland, Sway, Hyprland… | Add a custom shortcut in your desktop's keyboard settings that runs `ember-monitor --toggle-overlay` (the Overlay page shows the exact command, with a copy button). |
+| X11 (Xfce, Cinnamon, MATE, "GNOME on Xorg"…) | Works straight away. |
+| Wayland (GNOME, KDE Plasma, Sway, Hyprland…) | Wayland doesn't let apps see key presses by default. The Overlay page shows **Allow hotkeys** once: it asks for your password and adds a udev rule (`/etc/udev/rules.d/70-ember-monitor-hotkeys.rules`) that lets the user at the screen read the keyboard. Programs you run can then read the keyboard, as they always could on X11. Uninstalling the .deb/.rpm/Arch package removes the rule; with the AppImage, delete that file yourself. |
+
+If allowing isn't possible (no `pkexec`), the Overlay page shows the equivalent terminal command.
+Without keyboard access at all, you can still bind `ember-monitor --toggle-overlay` or
+`ember-monitor --preset NAME` to a shortcut in your desktop's keyboard settings.
 
 ## Tray icon
 
@@ -54,6 +61,7 @@ with the command that fixes it:
 ember-monitor                   open Ember (or bring the running window forward)
 ember-monitor --tray            start in the background
 ember-monitor --toggle-overlay  show / hide the overlay
+ember-monitor --preset NAME     switch the overlay to a preset (again while it's showing hides it)
 ember-monitor --exit            quit the running Ember
 ember-monitor --snapshot DIR    write a sensor report and screenshots to DIR (for bug reports)
 ```

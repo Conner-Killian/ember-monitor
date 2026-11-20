@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Windows;
@@ -314,8 +315,8 @@ public partial class App : Application
         Sensors.Status += msg => { LogError(msg); _overlay?.ApplySettings(); };
 
         Hotkey = new HotkeyService();
-        Hotkey.SetCombo(Settings.Hotkey);
-        Hotkey.Pressed += () => Dispatcher.BeginInvoke(ToggleOverlay);
+        Hotkey.SetBindings(HotkeyBindings());
+        Hotkey.Pressed += id => Dispatcher.BeginInvoke(() => { if (id == "") ToggleOverlay(); else ApplyPreset(id, fromHotkey: true); });
         Hotkey.Install();
 
         _tray = new TrayService();
@@ -325,6 +326,7 @@ public partial class App : Application
         _tray.LayoutRequested += l => { Settings.OverlayLayout = l; NotifySettingsChanged(); };
         _tray.UnitRequested += u => { Settings.Unit = u; NotifySettingsChanged(); };
         _tray.ExitRequested += ExitApp;
+        _tray.PresetRequested += id => ApplyPreset(id);
         _alerts.Notify += (t, m) => _tray?.ShowBalloon(t, m);
         _tray.UpdateRequested += () => _ = Updates.InstallAsync();
 
@@ -475,6 +477,23 @@ public partial class App : Application
         NotifySettingsChanged();
     }
 
+    /// <summary>The show / hide hotkey ("") plus every preset's.</summary>
+    private static IEnumerable<(string, IEnumerable<int>)> HotkeyBindings() =>
+        Settings.OverlayPresets.Select(p => (p.Id, (IEnumerable<int>)p.Hotkey)).Prepend(("", Settings.Hotkey));
+
+    /// <summary>
+    /// Switches the overlay to a preset and shows it. From the preset's own hotkey while that preset
+    /// is already on screen, it hides the overlay instead, like the show / hide key.
+    /// </summary>
+    public void ApplyPreset(string id, bool fromHotkey = false)
+    {
+        var p = Settings.OverlayPresets.FirstOrDefault(x => x.Id == id);
+        if (p == null) return;
+        if (fromHotkey && Settings.OverlayVisible && p.Matches(Settings)) Settings.OverlayVisible = false;
+        else p.ApplyTo(Settings);
+        NotifySettingsChanged();
+    }
+
     public void UpdateOverlayVisibility()
     {
         if (_exiting) return;
@@ -491,7 +510,7 @@ public partial class App : Application
         var app = Current;
         ThemeService.Apply(Settings);
         Sensors.IntervalMs = Settings.PollIntervalMs;
-        Hotkey.SetCombo(Settings.Hotkey);
+        Hotkey.SetBindings(HotkeyBindings());
         app.ApplyLogSettings();
         if (app._autoUpdates != Settings.AutoCheckUpdates)
         {

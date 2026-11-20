@@ -6,16 +6,20 @@ using System.Text.RegularExpressions;
 namespace Ember.Services.Linux;
 
 /// <summary>
-/// On Wayland no app may watch the whole keyboard, so Ember can't catch its own hotkey there.
-/// On GNOME it registers a system keyboard shortcut instead (Settings → Keyboard → Custom
-/// Shortcuts), which runs `ember-monitor --toggle-overlay`.
+/// On Wayland no app may watch the whole keyboard, so Ember can't catch its own hotkeys there.
+/// On GNOME it registers system keyboard shortcuts instead (Settings → Keyboard → Custom
+/// Shortcuts): one that runs `ember-monitor --toggle-overlay`, and one per overlay preset that
+/// runs `ember-monitor --preset ID`.
 /// </summary>
 public static class GnomeShortcut
 {
     private const string Schema = "org.gnome.settings-daemon.plugins.media-keys";
-    private const string ItemPath = "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/ember-monitor/";
-    private static string ItemSchema => $"{Schema}.custom-keybinding:{ItemPath}";
+    private const string BasePath = "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/";
     public const string DefaultBinding = "<Super><Shift>e";
+
+    /// <summary>The show / hide shortcut (presetId null) or a preset's.</summary>
+    private static string ItemPath(string? presetId) => BasePath + (presetId == null ? "ember-monitor/" : $"ember-monitor-preset-{presetId}/");
+    private static string ItemSchema(string? presetId) => $"{Schema}.custom-keybinding:{ItemPath(presetId)}";
 
     // Checked once: it spawns gsettings, and the answer can't change while Ember runs.
     private static readonly Lazy<bool> _available = new(() => Desktop.IsGnome && Desktop.Run("gsettings", "list-keys", Schema).code == 0);
@@ -28,35 +32,40 @@ public static class GnomeShortcut
         return Regex.Matches(output, "'([^']*)'").Select(m => m.Groups[1].Value).ToList();
     }
 
-    /// <summary>Current accelerator ("&lt;Super&gt;&lt;Shift&gt;e") or null if Ember's shortcut isn't set up.</summary>
-    public static string? Current()
+    private static void WriteList(List<string> list) =>
+        Desktop.Run("gsettings", "set", Schema, "custom-keybindings", list.Count == 0 ? "@as []" : "[" + string.Join(", ", list.Select(p => $"'{p}'")) + "]");
+
+    /// <summary>Current accelerator ("&lt;Super&gt;&lt;Shift&gt;e") or null if the shortcut isn't set up.</summary>
+    public static string? Current(string? presetId = null)
     {
-        if (!ReadList().Contains(ItemPath)) return null;
-        var (code, output) = Desktop.Run("gsettings", "get", ItemSchema, "binding");
+        if (!ReadList().Contains(ItemPath(presetId))) return null;
+        var (code, output) = Desktop.Run("gsettings", "get", ItemSchema(presetId), "binding");
         var b = code == 0 ? output.Trim().Trim('\'') : "";
         return b.Length > 0 ? b : null;
     }
 
-    public static bool Set(string accelerator)
+    /// <summary>Sets the show / hide shortcut, or (with <paramref name="presetId"/>) a preset's.</summary>
+    public static bool Set(string accelerator, string? presetId = null, string? presetName = null)
     {
-        if (Desktop.Run("gsettings", "set", ItemSchema, "name", "Ember: show / hide overlay").code != 0) return false;
-        Desktop.Run("gsettings", "set", ItemSchema, "command", Desktop.ToggleCommand);
-        Desktop.Run("gsettings", "set", ItemSchema, "binding", accelerator);
+        var schema = ItemSchema(presetId);
+        var name = presetId == null ? "Ember: show / hide overlay" : $"Ember: overlay preset “{presetName}”";
+        if (Desktop.Run("gsettings", "set", schema, "name", name).code != 0) return false;
+        Desktop.Run("gsettings", "set", schema, "command", presetId == null ? Desktop.ToggleCommand : Desktop.PresetCommand(presetId));
+        Desktop.Run("gsettings", "set", schema, "binding", accelerator);
         var list = ReadList();
-        if (!list.Contains(ItemPath))
+        if (!list.Contains(ItemPath(presetId)))
         {
-            list.Add(ItemPath);
-            Desktop.Run("gsettings", "set", Schema, "custom-keybindings", "[" + string.Join(", ", list.Select(p => $"'{p}'")) + "]");
+            list.Add(ItemPath(presetId));
+            WriteList(list);
         }
-        return Current() == accelerator;
+        return Current(presetId) == accelerator;
     }
 
-    public static void Remove()
+    public static void Remove(string? presetId = null)
     {
         var list = ReadList();
-        if (list.Remove(ItemPath))
-            Desktop.Run("gsettings", "set", Schema, "custom-keybindings", list.Count == 0 ? "@as []" : "[" + string.Join(", ", list.Select(p => $"'{p}'")) + "]");
-        Desktop.Run("gsettings", "reset-recursively", ItemSchema);
+        if (list.Remove(ItemPath(presetId))) WriteList(list);
+        Desktop.Run("gsettings", "reset-recursively", ItemSchema(presetId));
     }
 
     /// <summary>"&lt;Super&gt;&lt;Shift&gt;e" → "Super + Shift + E".</summary>

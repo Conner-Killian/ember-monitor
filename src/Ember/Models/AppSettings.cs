@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -24,6 +25,113 @@ public sealed class DriveOverlayOption
     public string Id { get; set; } = "";
     public bool Show { get; set; } = true;
     public string Label { get; set; } = "";
+}
+
+/// <summary>
+/// A saved overlay setup (style, position, readings, look) that can be switched to from the Overlay
+/// tab, the tray menu or its own hotkey.
+/// </summary>
+public sealed class OverlayPreset
+{
+    public string Id { get; set; } = NewId();
+    public string Name { get; set; } = "";
+    /// <summary>Hotkey as virtual-key codes (like <see cref="AppSettings.Hotkey"/>); empty = none.</summary>
+    public List<int> Hotkey { get; set; } = new();
+    /// <summary>Linux, GNOME on Wayland: the system shortcut registered for this preset ("&lt;Super&gt;1").</summary>
+    public string? ShortcutAccel { get; set; }
+
+    public OverlayLayout Layout { get; set; } = OverlayLayout.Pill;
+    public OverlayAnchor Anchor { get; set; } = OverlayAnchor.TopRight;
+    public double FreeX { get; set; } = double.NaN;
+    public double FreeY { get; set; } = double.NaN;
+    public bool GrowLeft { get; set; }
+    public bool GrowUp { get; set; }
+    public string? Monitor { get; set; }
+    public string? MonitorBounds { get; set; }
+    public double Opacity { get; set; } = 0.82;
+    public double Scale { get; set; } = 1.0;
+    public bool ShowCpu { get; set; } = true;
+    public bool ShowGpu { get; set; } = true;
+    public bool ShowRam { get; set; }
+    public bool ShowDrives { get; set; }
+    public bool ShowUsage { get; set; }
+    public bool ShowPower { get; set; }
+    public bool ShowLabels { get; set; } = true;
+    public List<DriveOverlayOption> Drives { get; set; } = new();
+
+    public static string NewId() => Guid.NewGuid().ToString("N")[..8];
+
+    /// <summary>The overlay as it's set up right now.</summary>
+    public static OverlayPreset Capture(AppSettings s, string name)
+    {
+        var p = new OverlayPreset { Name = name };
+        p.CopyFrom(s);
+        return p;
+    }
+
+    /// <summary>Replaces this preset's setup with the overlay's current one (name and hotkey stay).</summary>
+    public void CopyFrom(AppSettings s)
+    {
+        Layout = s.OverlayLayout; Anchor = s.OverlayAnchor;
+        FreeX = s.OverlayFreeX; FreeY = s.OverlayFreeY; GrowLeft = s.OverlayGrowLeft; GrowUp = s.OverlayGrowUp;
+        Monitor = s.OverlayMonitor; MonitorBounds = s.OverlayMonitorBounds;
+        Opacity = s.OverlayOpacity; Scale = s.OverlayScale;
+        ShowCpu = s.OverlayShowCpu; ShowGpu = s.OverlayShowGpu; ShowRam = s.OverlayShowRam; ShowDrives = s.OverlayShowDrives;
+        ShowUsage = s.OverlayShowUsage; ShowPower = s.OverlayShowPower; ShowLabels = s.OverlayShowLabels;
+        Drives = s.Drives.Select(d => new DriveOverlayOption { Id = d.Id, Show = d.Show, Label = d.Label }).ToList();
+    }
+
+    /// <summary>Switches the overlay to this preset (and shows it).</summary>
+    public void ApplyTo(AppSettings s)
+    {
+        s.OverlayLayout = Layout; s.OverlayAnchor = Anchor;
+        s.OverlayFreeX = FreeX; s.OverlayFreeY = FreeY; s.OverlayGrowLeft = GrowLeft; s.OverlayGrowUp = GrowUp;
+        s.OverlayMonitor = Monitor; s.OverlayMonitorBounds = MonitorBounds;
+        s.OverlayOpacity = Opacity; s.OverlayScale = Scale;
+        s.OverlayShowCpu = ShowCpu; s.OverlayShowGpu = ShowGpu; s.OverlayShowRam = ShowRam; s.OverlayShowDrives = ShowDrives;
+        s.OverlayShowUsage = ShowUsage; s.OverlayShowPower = ShowPower; s.OverlayShowLabels = ShowLabels;
+        // Drive choices: the preset's wins for drives it knows; drives it doesn't know keep theirs.
+        foreach (var d in Drives)
+        {
+            var cur = s.Drives.FirstOrDefault(x => x.Id == d.Id);
+            if (cur == null) s.Drives.Add(cur = new DriveOverlayOption { Id = d.Id });
+            cur.Show = d.Show; cur.Label = d.Label;
+        }
+        s.OverlayVisible = true;
+    }
+
+    /// <summary>Whether the overlay is set up exactly like this preset right now.</summary>
+    public bool Matches(AppSettings s)
+    {
+        static bool Same(double a, double b) => double.IsNaN(a) ? double.IsNaN(b) : Math.Abs(a - b) < 0.001;
+        bool free = Anchor == OverlayAnchor.Free;
+        return s.OverlayLayout == Layout && s.OverlayAnchor == Anchor
+            && (!free || (Same(s.OverlayFreeX, FreeX) && Same(s.OverlayFreeY, FreeY) && s.OverlayGrowLeft == GrowLeft && s.OverlayGrowUp == GrowUp))
+            && (s.OverlayMonitor ?? "") == (Monitor ?? "")
+            && Same(s.OverlayOpacity, Opacity) && Same(s.OverlayScale, Scale)
+            && s.OverlayShowCpu == ShowCpu && s.OverlayShowGpu == ShowGpu && s.OverlayShowRam == ShowRam && s.OverlayShowDrives == ShowDrives
+            && s.OverlayShowUsage == ShowUsage && s.OverlayShowPower == ShowPower && s.OverlayShowLabels == ShowLabels
+            && Drives.All(d => s.Drives.FirstOrDefault(x => x.Id == d.Id) is { } cur && cur.Show == d.Show && cur.Label == d.Label);
+    }
+
+    /// <summary>One line for the preset list: "Card · Display 2, bottom left · CPU, GPU, usage".</summary>
+    public string Describe(string displayName)
+    {
+        string where = Anchor switch
+        {
+            OverlayAnchor.TopLeft => "top left", OverlayAnchor.TopRight => "top right",
+            OverlayAnchor.BottomLeft => "bottom left", OverlayAnchor.BottomRight => "bottom right",
+            _ => "where you placed it",
+        };
+        var shows = new List<string>();
+        if (ShowCpu) shows.Add("CPU");
+        if (ShowGpu) shows.Add("GPU");
+        if (ShowRam) shows.Add("RAM");
+        if (ShowDrives) shows.Add("drives");
+        if (ShowUsage) shows.Add("usage");
+        if (ShowPower) shows.Add("power");
+        return $"{Layout} · {displayName}, {where} · {(shows.Count > 0 ? string.Join(", ", shows) : "nothing selected")}";
+    }
 }
 
 public sealed class AppSettings
@@ -64,6 +172,17 @@ public sealed class AppSettings
     public bool OverlayHideWhenMainOpen { get; set; } = false;
     public List<DriveOverlayOption> Drives { get; set; } = new();
     public string? PrimaryGpuId { get; set; } // null = auto
+    /// <summary>Saved overlay setups (Overlay tab → Presets), in the order they're listed.</summary>
+    public List<OverlayPreset> OverlayPresets { get; set; } = new();
+
+    /// <summary>Who already uses this key combination: "Show / hide overlay", a preset's name, or null.</summary>
+    public string? HotkeyOwner(IEnumerable<int> combo, string? exceptPresetId)
+    {
+        var set = new HashSet<int>(combo);
+        if (set.Count == 0) return null;
+        if (exceptPresetId != "" && set.SetEquals(Hotkey)) return "Show / hide overlay";
+        return OverlayPresets.FirstOrDefault(p => p.Id != exceptPresetId && p.Hotkey.Count > 0 && set.SetEquals(p.Hotkey))?.Name;
+    }
 
     // ---- Alerts ----
     public bool AlertsColor { get; set; } = true;
@@ -178,6 +297,19 @@ public sealed class AppSettings
         LogViewHours = Math.Clamp(LogViewHours, 1, 365 * 24);
         Hotkey ??= new();
         Drives ??= new();
+        OverlayPresets ??= new();
+        OverlayPresets.RemoveAll(p => p == null);
+        var ids = new HashSet<string>();
+        foreach (var p in OverlayPresets)
+        {
+            if (string.IsNullOrWhiteSpace(p.Id) || !ids.Add(p.Id)) { p.Id = OverlayPreset.NewId(); ids.Add(p.Id); }
+            if (string.IsNullOrWhiteSpace(p.Name)) p.Name = "Preset";
+            p.Hotkey ??= new();
+            p.Drives ??= new();
+            p.Opacity = double.IsFinite(p.Opacity) ? Math.Clamp(p.Opacity, 0.2, 1.0) : 0.82;
+            p.Scale = double.IsFinite(p.Scale) ? Math.Clamp(p.Scale, 0.6, 2.0) : 1.0;
+            if (p.Anchor == OverlayAnchor.Free && (double.IsNaN(p.FreeX) || double.IsNaN(p.FreeY))) p.Anchor = OverlayAnchor.TopRight;
+        }
         CpuThresholds ??= new(80, 90);
         GpuThresholds ??= new(78, 86);
         RamThresholds ??= new(60, 75);

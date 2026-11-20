@@ -83,9 +83,10 @@
                 </Button>
             </Grid>
 
-            <Grid ColumnDefinitions="*,16,*">
+            <!-- Side by side when there's room; stacked in a narrow window (see DashboardPage.ApplyWidth). -->
+            <Grid x:Name="HeroGrid" ColumnDefinitions="*,16,*" RowDefinitions="Auto,Auto">
                 <ContentControl Content="{Binding Cpu}" ContentTemplate="{StaticResource HeroCard}" />
-                <ContentControl Grid.Column="2" Content="{Binding Gpu}" ContentTemplate="{StaticResource HeroCard}" />
+                <ContentControl x:Name="GpuCard" Grid.Column="2" Content="{Binding Gpu}" ContentTemplate="{StaticResource HeroCard}" />
             </Grid>
 
             <Grid Margin="0,16,0,0" ColumnDefinitions="*,16,2*">

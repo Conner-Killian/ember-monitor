@@ -27,6 +27,8 @@ public partial class LogPage : UserControl
         _refresh = new DispatcherTimer(TimeSpan.FromSeconds(60), DispatcherPriority.Background, (_, _) => Refresh());
         Loaded += (_, _) => { Refresh(); _refresh.Start(); App.SettingsChanged += OnSettings; App.LogChanged += Refresh; };
         Unloaded += (_, _) => { _refresh.Stop(); App.SettingsChanged -= OnSettings; App.LogChanged -= Refresh; };
+        // Narrow page: each card's readings go under the component's name instead of squeezing it out.
+        SizeChanged += (_, e) => Classes.Set("narrow", e.NewSize.Width - 56 < 720);
     }
 
     private static string SettingsKey()
@@ -55,9 +57,17 @@ public partial class LogPage : UserControl
         int hours = LogViewModel.ViewHours(s);
         var combo = C<ComboBox>("RangeCombo");
         _syncingRange = true;
-        combo.ItemsSource = LogViewModel.ViewOptions(s.LogRetentionDays)
-            .Select(h => new ComboBoxItem { Content = LogViewModel.RangeText(h), Tag = h }).ToList();
-        combo.SelectedItem = combo.Items.OfType<ComboBoxItem>().FirstOrDefault(i => i.Tag is int t && t == hours);
+        // Rebuild the list only when the choices change: the page refreshes every minute, and
+        // replacing the items would close the dropdown under the pointer.
+        var options = LogViewModel.ViewOptions(s.LogRetentionDays);
+        var optionsKey = string.Join(",", options);
+        if (optionsKey != _rangeOptions)
+        {
+            _rangeOptions = optionsKey;
+            combo.ItemsSource = options.Select(h => new ComboBoxItem { Content = LogViewModel.RangeText(h), Tag = h }).ToList();
+        }
+        var selected = combo.Items.OfType<ComboBoxItem>().FirstOrDefault(i => i.Tag is int t && t == hours);
+        if (combo.SelectedItem != selected) combo.SelectedItem = selected;
         _syncingRange = false;
 
         var log = App.Log;
@@ -80,7 +90,15 @@ public partial class LogPage : UserControl
         C<StackPanel>("RangeHost").IsVisible = true;
         LogView view;
         try { view = await Task.Run(() => LogViewModel.Build(log, hours, s, DateTime.UtcNow)); }
-        catch (Exception ex) { App.LogError("Log page: " + ex); C<TextBlock>("StatusText").Text = "Couldn't read the log: " + ex.Message; return; }
+        catch (Exception ex)
+        {
+            // A refresh that's been overtaken (e.g. the log was just turned off or deleted, closing the
+            // file mid-read) must not cover the newer page with its error.
+            if (version != _version) return;
+            App.LogError("Log page: " + ex);
+            C<TextBlock>("StatusText").Text = "Couldn't read the log: " + ex.Message;
+            return;
+        }
         if (version != _version) return;
 
         C<TextBlock>("StatusText").Text = $"{view.Status} · keeps {LogViewModel.DaysText(s.LogRetentionDays)} · {LogViewModel.SizeText(log.FileBytes)} on disk";
@@ -130,6 +148,7 @@ public partial class LogPage : UserControl
     }
 
     private bool _syncingRange;
+    private string _rangeOptions = "";
     private void Range_Changed(object? sender, SelectionChangedEventArgs e)
     {
         if (_syncingRange || C<ComboBox>("RangeCombo").SelectedItem is not ComboBoxItem { Tag: int hours } || hours == LogViewModel.ViewHours(App.Settings)) return;

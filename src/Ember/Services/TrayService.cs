@@ -24,6 +24,9 @@ public sealed class TrayService : IDisposable
 
     public event Action? OpenRequested, ToggleOverlay, ToggleLock, ExitRequested, UpdateRequested;
     public event Action<OverlayLayout>? LayoutRequested;
+    /// <summary>A preset chosen from the "Overlay presets" submenu (its id).</summary>
+    public event Action<string>? PresetRequested;
+    private readonly ToolStripMenuItem _presets;
     public event Action<TempUnit>? UnitRequested;
 
     public TrayService()
@@ -48,6 +51,11 @@ public sealed class TrayService : IDisposable
         layout.DropDownItems.AddRange(new ToolStripItem[] { _pill, _card, _rings });
         StyleDropDown(layout);
 
+        // Filled each time the menu opens (presets can change at any time).
+        _presets = new ToolStripMenuItem("Overlay presets") { Visible = false };
+        _presets.DropDownItems.Add(new ToolStripMenuItem("(none)")); // a submenu needs an item to show its arrow
+        StyleDropDown(_presets);
+
         var unit = new ToolStripMenuItem("Units");
         _unitC = new ToolStripMenuItem("Celsius (°C)"); _unitC.Click += (_, _) => UnitRequested?.Invoke(TempUnit.Celsius);
         _unitF = new ToolStripMenuItem("Fahrenheit (°F)"); _unitF.Click += (_, _) => UnitRequested?.Invoke(TempUnit.Fahrenheit);
@@ -63,7 +71,7 @@ public sealed class TrayService : IDisposable
 
         menu.Items.AddRange(new ToolStripItem[]
         {
-            open, new ToolStripSeparator(), _overlayItem, _lockItem, layout, unit, new ToolStripSeparator(),
+            open, new ToolStripSeparator(), _overlayItem, _lockItem, layout, _presets, unit, new ToolStripSeparator(),
             _updateItem, _updateSeparator, exit
         });
         menu.Opening += (_, _) => Sync();
@@ -103,6 +111,18 @@ public sealed class TrayService : IDisposable
         _rings.Checked = s.OverlayLayout == OverlayLayout.Rings;
         _unitC.Checked = s.Unit == TempUnit.Celsius;
         _unitF.Checked = s.Unit == TempUnit.Fahrenheit;
+
+        _presets.Visible = s.OverlayPresets.Count > 0;
+        _presets.DropDownItems.Clear();
+        foreach (var p in s.OverlayPresets)
+        {
+            var id = p.Id;
+            var text = p.Hotkey.Count > 0 ? $"{p.Name} ({HotkeyService.Describe(p.Hotkey)})" : p.Name;
+            var item = new ToolStripMenuItem(text.Replace("&", "&&")) { Checked = s.OverlayVisible && p.Matches(s) };
+            item.Click += (_, _) => PresetRequested?.Invoke(id);
+            _presets.DropDownItems.Add(item);
+        }
+        if (_presets.DropDownItems.Count == 0) _presets.DropDownItems.Add(new ToolStripMenuItem("(none)"));
     }
 
     public void ShowBalloon(string title, string text, bool warning = true)

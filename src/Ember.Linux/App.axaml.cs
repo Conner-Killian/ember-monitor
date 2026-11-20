@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -96,7 +97,7 @@ public partial class App : Application
     private MainWindow? _main;
     private DispatcherTimer? _saveTimer;
     private TrayIcon? _tray;
-    private NativeMenuItem? _trayOverlay, _trayLock, _trayPill, _trayCard, _trayRings, _trayC, _trayF, _trayUpdate;
+    private NativeMenuItem? _trayOverlay, _trayLock, _trayPill, _trayCard, _trayRings, _trayC, _trayF, _trayUpdate, _trayPresets;
     private WindowIcon? _appIcon;
     private string _trayIconKey = "";
     private bool _exiting, _started;
@@ -155,11 +156,20 @@ public partial class App : Application
         Sensors = new SensorService { IntervalMs = Settings.PollIntervalMs };
         Sensors.Updated += snap => { Log?.Add(snap, DateTime.UtcNow); OnSnapshot(snap); }; // each new reading logged once
         ApplyLogSettings();
+        if (!diagnostics) SaveOnExitSignals();
         Sensors.Status += msg => { LogError(msg); _overlay?.ApplySettings(); };
 
+        // `ember-monitor --preset ID` when Ember wasn't running: start with that preset.
+        int presetIdx = Array.FindIndex(args, a => a.Equals("--preset", StringComparison.OrdinalIgnoreCase));
+        if (presetIdx >= 0 && presetIdx + 1 < args.Length && FindPreset(args[presetIdx + 1]) is { } startPreset)
+            startPreset.ApplyTo(Settings);
+
         Hotkey = new HotkeyService();
-        Hotkey.SetCombo(Settings.Hotkey);
-        Hotkey.Pressed += () => Dispatcher.UIThread.Post(ToggleOverlay);
+        Hotkey.SetBindings(HotkeyBindings());
+        Hotkey.Pressed += id => Dispatcher.UIThread.Post(() => { if (id == "") ToggleOverlay(); else ApplyPreset(id, fromHotkey: true); });
+        // Hotkeys started working later (keyboard connected, access allowed) or now need the one-time
+        // permission: refresh the Overlay page, sidebar and tray.
+        Hotkey.StateChanged += () => Dispatcher.UIThread.Post(NotifySettingsChanged);
         Hotkey.Install();
 
         _alerts.Notify += (t, m) => Desktop.Notify(t, m);
@@ -181,7 +191,7 @@ public partial class App : Application
         if (Settings.OverlayVisible) _overlay.ShowAnimated();
 
         Sensors.Start();
-        if (!Has("--tray")) ShowMain();
+        if (!Has("--tray") && presetIdx < 0) ShowMain();
         UpdateOverlayVisibility();
 
         if (diagnostics && snapIdx + 1 < args.Length)
@@ -205,7 +215,30 @@ public partial class App : Application
             case "show": ShowMain(); break;
             case "toggle": ToggleOverlay(); break;
             case "exit": ExitApp(); break;
+            // A keyboard shortcut running `ember-monitor --preset ID`: same as the preset's own hotkey.
+            case var c when c.StartsWith("preset:", StringComparison.Ordinal): ApplyPreset(c["preset:".Length..], fromHotkey: true); break;
         }
+    }
+
+    /// <summary>The show / hide hotkey ("") plus every preset's.</summary>
+    private static IEnumerable<(string, IEnumerable<int>)> HotkeyBindings() =>
+        Settings.OverlayPresets.Select(p => (p.Id, (IEnumerable<int>)p.Hotkey)).Prepend(("", Settings.Hotkey));
+
+    /// <summary>A preset by id, or by name (for a hand-written `--preset "Gaming"`).</summary>
+    private static Models.OverlayPreset? FindPreset(string idOrName) =>
+        Settings.OverlayPresets.FirstOrDefault(p => p.Id == idOrName)
+        ?? Settings.OverlayPresets.FirstOrDefault(p => p.Name.Equals(idOrName, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// Switches the overlay to a preset and shows it. From the preset's own hotkey while that preset
+    /// is already on screen, it hides the overlay instead, like the show / hide key.
+    /// </summary>
+    public void ApplyPreset(string idOrName, bool fromHotkey = false)
+    {
+        if (FindPreset(idOrName) is not { } p) return;
+        if (fromHotkey && Settings.OverlayVisible && p.Matches(Settings)) Settings.OverlayVisible = false;
+        else p.ApplyTo(Settings);
+        NotifySettingsChanged();
     }
 
     private void OnSnapshot(SensorSnapshot snap)
@@ -259,7 +292,7 @@ public partial class App : Application
         var app = Current;
         ThemeService.Apply(Settings);
         Sensors.IntervalMs = Settings.PollIntervalMs;
-        Hotkey.SetCombo(Settings.Hotkey);
+        Hotkey.SetBindings(HotkeyBindings());
         app.ApplyLogSettings();
         if (app._autoUpdates != Settings.AutoCheckUpdates)
         {
@@ -291,6 +324,29 @@ public partial class App : Application
         _main?.ForceClose();
         if (_tray != null) _tray.IsVisible = false;
         _desktop?.Shutdown();
+    }
+
+    // Shutting down or logging out ends Ember with a signal (SIGTERM from systemd / the session, SIGHUP
+    // when the session goes away), and Avalonia's Exit never runs. Without this the last minutes of
+    // the log (written every 10 minutes) and any unsaved settings were lost at every shutdown.
+    private static System.Runtime.InteropServices.PosixSignalRegistration[]? _exitSignals;
+    private static int _signalSaved;
+
+    private static void SaveOnExitSignals()
+    {
+        static void OnSignal(System.Runtime.InteropServices.PosixSignalContext ctx)
+        {
+            if (System.Threading.Interlocked.Exchange(ref _signalSaved, 1) != 0) return;
+            try { if (Application.Current is App { _started: true }) Settings.Save(); } catch { }
+            FlushLog(final: true);
+            // ctx.Cancel stays false: the process still ends as the signal asks, just after saving.
+        }
+        try
+        {
+            _exitSignals = new[] { System.Runtime.InteropServices.PosixSignal.SIGTERM, System.Runtime.InteropServices.PosixSignal.SIGHUP, System.Runtime.InteropServices.PosixSignal.SIGINT }
+                .Select(s => System.Runtime.InteropServices.PosixSignalRegistration.Create(s, OnSignal)).ToArray();
+        }
+        catch (Exception ex) { LogError("Exit signal handlers: " + ex.Message); }
     }
 
     private void OnExit()
@@ -337,12 +393,13 @@ public partial class App : Application
                 return i;
             }
             _trayC = Unit("Celsius (°C)", TempUnit.Celsius); _trayF = Unit("Fahrenheit (°F)", TempUnit.Fahrenheit);
+            _trayPresets = new NativeMenuItem("Overlay presets") { Menu = new NativeMenu(), IsVisible = false };
 
             var exit = new NativeMenuItem("Exit"); exit.Click += (_, _) => ExitApp();
             _trayUpdate = new NativeMenuItem("Download update") { IsVisible = false };
             _trayUpdate.Click += (_, _) => Desktop.OpenUrl(Updates.Latest?.PageUrl ?? UpdateChecker.ReleasesPage);
             menu.Add(open); menu.Add(new NativeMenuItemSeparator());
-            menu.Add(_trayOverlay); menu.Add(_trayLock); menu.Add(style); menu.Add(units);
+            menu.Add(_trayOverlay); menu.Add(_trayLock); menu.Add(style); menu.Add(_trayPresets); menu.Add(units);
             menu.Add(new NativeMenuItemSeparator()); menu.Add(_trayUpdate); menu.Add(exit);
 
             _tray = new TrayIcon { Icon = _appIcon, ToolTipText = "Ember", Menu = menu, IsVisible = true };
@@ -367,10 +424,31 @@ public partial class App : Application
         _trayRings!.IsChecked = s.OverlayLayout == OverlayLayout.Rings;
         _trayC!.IsChecked = s.Unit == TempUnit.Celsius;
         _trayF!.IsChecked = s.Unit == TempUnit.Fahrenheit;
+        SyncTrayPresets();
         bool update = Updates.IsAvailable;
         if (_trayUpdate!.IsVisible != update) _trayUpdate.IsVisible = update;
         if (update && _trayUpdate.Header != $"Download Ember {Updates.Latest!.VersionText}…")
             _trayUpdate.Header = $"Download Ember {Updates.Latest!.VersionText}…";
+    }
+
+    // Rebuilt only when the list (or which one is showing) changes: every rebuild is a round of D-Bus updates.
+    private string _trayPresetsKey = "";
+    private void SyncTrayPresets()
+    {
+        var s = Settings;
+        var key = Hotkey.IsActive + "|" + string.Join("|", s.OverlayPresets.Select(p => $"{p.Id}:{p.Name}:{string.Join(",", p.Hotkey)}:{s.OverlayVisible && p.Matches(s)}"));
+        if (key == _trayPresetsKey || _trayPresets?.Menu is not { } menu) return;
+        _trayPresetsKey = key;
+        menu.Items.Clear();
+        foreach (var p in s.OverlayPresets)
+        {
+            var id = p.Id;
+            var text = p.Hotkey.Count > 0 && Hotkey.IsActive ? $"{p.Name} ({HotkeyService.Describe(p.Hotkey)})" : p.Name;
+            var item = new NativeMenuItem(text) { ToggleType = NativeMenuItemToggleType.Radio, IsChecked = s.OverlayVisible && p.Matches(s) };
+            item.Click += (_, _) => ApplyPreset(id);
+            menu.Add(item);
+        }
+        _trayPresets.IsVisible = s.OverlayPresets.Count > 0;
     }
 
     private void UpdateTray(SensorSnapshot snap)
@@ -389,7 +467,9 @@ public partial class App : Application
         var key = text + sev;
         if (key == _trayIconKey) return;
         _trayIconKey = key;
-        try { _tray.Icon = new WindowIcon(RenderTempIcon(text, sev, 64)); } catch { }
+        // WindowIcon copies the pixels, so the rendered bitmap (native memory) can go right away;
+        // otherwise one piles up for every temperature change until the GC gets round to it.
+        try { using var bmp = RenderTempIcon(text, sev, 64); _tray.Icon = new WindowIcon(bmp); } catch { }
     }
 
     /// <summary>The temperature drawn as a path scaled to fill a square icon (readable at tray size).</summary>
