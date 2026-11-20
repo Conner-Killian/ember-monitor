@@ -63,6 +63,8 @@ Builds are self-contained; .NET does not need to be installed to run Ember.
 
 ## Installation
 
+Download the files for your system from the [latest release](https://github.com/Conner-Killian/ember-monitor/releases/latest).
+
 ### Windows
 
 1. Download and run `Ember-Setup-<version>.exe`.
